@@ -1,0 +1,200 @@
+.detail-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 16px;
+}
+
+.detail-back-btn:hover {
+  background: var(--bg);
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.detail-title {
+  font-size: 25px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.4px;
+}
+
+.detail-subtitle {
+  color: var(--slate);
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.detail-subtitle b {
+  color: var(--ink);
+}
+
+.detail-chain {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.detail-chain-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-chain-badge {
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.detail-chain-badge-label {
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.detail-chain-arrow {
+  color: var(--slate);
+  font-weight: 700;
+}
+
+.detail-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.detail-card-title {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.detail-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11.5px;
+  color: var(--slate);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  background: var(--bg);
+}
+
+.detail-table td {
+  padding: 13px 16px;
+  font-size: 13.5px;
+  color: var(--slate);
+}
+
+.detail-table tbody tr {
+  border-top: 1px solid var(--line);
+}
+
+.detail-material-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.detail-recv-input {
+  width: 92px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+.detail-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.detail-mismatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--red);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.detail-actions {
+  padding: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.detail-btn-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  flex: 1;
+}
+
+.detail-btn-confirm {
+  background: var(--orange);
+  color: #fff;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.detail-btn-confirm:hover {
+  opacity: 0.9;
+}
+
+.detail-btn-blocked {
+  background: #E9ECEF;
+  color: #9AA0A6;
+  cursor: not-allowed;
+}
+
+.detail-btn-physical {
+  background: var(--amber);
+  color: #fff;
+}
+
+.detail-btn-physical:hover {
+  opacity: 0.9;
+}

@@ -1,0 +1,144 @@
+.header {
+  height: 64px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-plant-label {
+  font-size: 13px;
+  color: var(--slate);
+  font-weight: 500;
+}
+
+.header-plant-select-wrapper {
+  position: relative;
+}
+
+.header-plant-select {
+  appearance: none;
+  padding: 8px 34px 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.header-plant-chevron {
+  position: absolute;
+  right: 11px;
+  top: 11px;
+  color: var(--slate);
+  pointer-events: none;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+.header-bell-btn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.header-bell-icon {
+  color: var(--slate);
+}
+
+.header-bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--orange);
+  color: #fff;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-notif-dropdown {
+  position: absolute;
+  top: 44px;
+  right: 40px;
+  width: 300px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.header-notif-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.header-notif-item {
+  padding: 13px 16px;
+  display: flex;
+  gap: 11px;
+}
+
+.header-notif-item:not(:last-child) {
+  border-bottom: 1px solid var(--line);
+}
+
+.header-notif-item-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.header-notif-item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.header-notif-item-desc {
+  font-size: 12.5px;
+  color: var(--slate);
+  margin-top: 2px;
+}
+
+.header-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 100px;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}

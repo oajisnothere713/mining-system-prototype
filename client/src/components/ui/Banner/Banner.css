@@ -1,0 +1,15 @@
+.banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: 9px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}

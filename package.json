@@ -1,0 +1,17 @@
+{
+  "name": "mining-system-prototype",
+  "version": "1.0.0",
+  "description": "Field Ops Intelligence — Full-stack MERN application for mining operations management",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"bun run server\" \"bun run client\"",
+    "server": "cd server && bun run dev",
+    "client": "cd client && bun run dev",
+    "install-all": "bun install && cd server && bun install && cd ../client && bun install",
+    "seed": "cd server && bun run seed",
+    "seed:fresh": "cd server && bun run seed:fresh"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

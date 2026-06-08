@@ -1,0 +1,24 @@
+.select-wrapper {
+  position: relative;
+}
+
+.select-input {
+  appearance: none;
+  padding: 10px 36px 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+  min-width: 160px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  color: var(--slate);
+  pointer-events: none;
+}

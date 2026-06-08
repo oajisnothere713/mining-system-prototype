@@ -1,0 +1,29 @@
+.info-dot {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-dot-icon {
+  color: var(--slate);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.info-dot-tooltip {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: 7px;
+  width: 180px;
+  z-index: 100;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}

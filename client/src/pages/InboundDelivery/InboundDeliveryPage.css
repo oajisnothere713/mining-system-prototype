@@ -1,0 +1,220 @@
+.ibd-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ibd-page-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.ibd-page-subtitle {
+  color: var(--slate);
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.ibd-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 18px;
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--blue);
+  font-family: inherit;
+}
+
+.ibd-sync-btn:hover {
+  background: var(--blue-soft);
+}
+
+.ibd-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ibd-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.ibd-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.ibd-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.ibd-card-label {
+  font-size: 12.5px;
+  color: var(--slate);
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+.ibd-toolbar {
+  display: flex;
+  gap: 11px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ibd-search-box {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.ibd-search-icon {
+  color: var(--slate);
+}
+
+.ibd-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.ibd-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ibd-btn-ghost:hover {
+  background: var(--bg);
+}
+
+.ibd-btn-ghost--active {
+  background: var(--orange-soft);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.ibd-filter-panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.ibd-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  height: 40px;
+}
+
+.ibd-table-wrapper {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ibd-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ibd-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 11.5px;
+  color: var(--slate);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  background: var(--bg);
+}
+
+.ibd-table td {
+  padding: 13px 16px;
+  font-size: 13.5px;
+  color: var(--slate);
+}
+
+.ibd-table tbody tr {
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+  background: #fff;
+  transition: background 0.1s;
+}
+
+.ibd-table tbody tr:hover {
+  background: var(--orange-soft);
+}
+
+.ibd-table .ibd-id {
+  font-weight: 600;
+  color: var(--orange);
+}
+
+.ibd-table .ibd-po {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ibd-empty-row td {
+  text-align: center;
+  padding: 40px;
+}
