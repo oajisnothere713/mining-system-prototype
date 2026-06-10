@@ -12,6 +12,12 @@
     "seed:fresh": "cd server && bun run seed:fresh"
   },
   "dependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "mongoose": "^9.7.0",
+    "morgan": "^1.11.0"
   }
 }
