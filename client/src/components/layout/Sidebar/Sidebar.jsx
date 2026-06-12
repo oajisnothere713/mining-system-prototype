@@ -13,7 +13,7 @@ import './Sidebar.css';
 const navItems = [
   { key: '/deliveries', label: 'Inbound Delivery', icon: Truck },
   { key: '/stock', label: 'Stock', icon: PackageSearch },
-  { key: '/schedule', label: 'Schedule', icon: CalendarRange, soon: true },
+  { key: '/schedule', label: 'Schedule', icon: CalendarRange },
   { key: '/docket', label: 'Mobile Docket', icon: ClipboardCheck, soon: true },
   { key: '/portal', label: 'Customer Portal', icon: Boxes, soon: true },
 ];
