@@ -46,7 +46,7 @@ export default function useDeliveries() {
 
   const syncERP = useCallback(async (plantCode) => {
     try {
-      const result = await deliveryService.syncERP();
+      const result = await deliveryService.syncERP(plantCode);
       await fetchDeliveries(plantCode);
       return { changed: result && result.length > 0 };
     } catch (err) {

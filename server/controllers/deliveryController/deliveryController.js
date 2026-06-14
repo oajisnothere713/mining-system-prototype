@@ -329,12 +329,16 @@ const receivePhysical = async (req, res, next) => {
 // @access  Public
 const syncERP = async (req, res, next) => {
   try {
+    const { plantCode } = req.body;
+    let targetPlantId = null;
+
+    if (plantCode) {
+      const plant = await Plant.findOne({ code: plantCode });
+      if (plant) targetPlantId = plant._id;
+    }
+
     // Find all deliveries with state 'physical_pending'
     const pendingDeliveries = await Delivery.find({ state: 'physical_pending' });
-
-    if (pendingDeliveries.length === 0) {
-      return res.json({ success: true, message: 'No physical_pending deliveries to sync', data: [] });
-    }
 
     // Get the highest IBD number for generating new ones
     const lastDelivery = await Delivery.findOne()
@@ -351,6 +355,7 @@ const syncERP = async (req, res, next) => {
 
     const updatedDeliveries = [];
 
+    // 1. Promote physical_pending -> in_transit
     for (const delivery of pendingDeliveries) {
       // Generate new IBD number
       delivery.ibdNumber = `IBD-${nextIbdNum++}`;
@@ -372,9 +377,73 @@ const syncERP = async (req, res, next) => {
       updatedDeliveries.push(formatDelivery(populated));
     }
 
+    // 2. Generate 5 random deliveries if we have a target plant
+    if (targetPlantId) {
+      const materials = await Material.find({});
+      const suppliers = [
+        "Deepak AN Works", "Solar Industries", "Keltech Energies",
+        "Economic Explosives Ltd", "Premier Explosives", "Gulf Oil",
+        "IDL Explosives", "Rajasthan Explosives"
+      ];
+
+      for (let i = 0; i < 5; i++) {
+        const poRandom = Math.floor(10000 + Math.random() * 90000); // 5 digit random
+        const supplier = suppliers[Math.floor(Math.random() * suppliers.length)];
+        
+        const poDate = new Date();
+        poDate.setDate(poDate.getDate() - 5);
+
+        const deliveryDate = new Date();
+
+        // 1 to 8 random lines
+        const numLines = Math.floor(Math.random() * 8) + 1;
+        const shuffledMaterials = [...materials].sort(() => 0.5 - Math.random());
+        const lines = [];
+
+        for (let j = 0; j < numLines && j < shuffledMaterials.length; j++) {
+          const mat = shuffledMaterials[j];
+          let expected = 0;
+          if (mat.uom === 't') {
+            expected = Math.floor(Math.random() * 46) + 5; // 5 to 50
+          } else {
+            expected = Math.floor(Math.random() * 1901) + 100; // 100 to 2000
+          }
+
+          lines.push({
+            material: mat._id,
+            expected: expected,
+            received: expected,
+          });
+        }
+
+        const newDelivery = await Delivery.create({
+          ibdNumber: `IBD-${nextIbdNum++}`,
+          poNumber: `PO-${poRandom}`,
+          poDate: poDate,
+          plant: targetPlantId,
+          date: deliveryDate,
+          supplier: supplier,
+          state: 'in_transit',
+          lines: lines,
+        });
+
+        // Recalculate stock for each material in this delivery
+        for (const line of newDelivery.lines) {
+          await recalcStockInbound(newDelivery.plant, line.material);
+        }
+
+        const populated = await findDeliveryByIdOrNumberPopulated(newDelivery._id);
+        updatedDeliveries.push(formatDelivery(populated));
+      }
+    }
+
+    if (updatedDeliveries.length === 0) {
+      return res.json({ success: true, message: 'No deliveries synced or generated.', data: [] });
+    }
+
     res.json({
       success: true,
-      message: `Synced ${updatedDeliveries.length} deliveries to ERP`,
+      message: `Synced and generated ${updatedDeliveries.length} deliveries`,
       data: updatedDeliveries,
     });
   } catch (error) {

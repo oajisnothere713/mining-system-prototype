@@ -37,7 +37,7 @@ export async function receivePhysical(id, lines) {
 /**
  * Sync deliveries with ERP.
  */
-export async function syncERP() {
-  const res = await axiosInstance.post('/deliveries/sync-erp');
+export async function syncERP(plantCode) {
+  const res = await axiosInstance.post('/deliveries/sync-erp', { plantCode });
   return res.data.data;
 }
