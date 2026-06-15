@@ -5,7 +5,7 @@ import axiosInstance from '../api/axiosInstance';
  */
 export async function getStock(plantCode, day) {
   const res = await axiosInstance.get('/stock', {
-    params: { plant: plantCode, day },
+    params: { plant: plantCode, day, _t: Date.now() },
   });
   return res.data.data;
 }

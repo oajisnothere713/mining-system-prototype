@@ -25,16 +25,6 @@ const CGROUPS = [
   { type: "Surveyors", hint: "Survey & mark-out", icon: "ti-user", lanes: [{ id: "James Lee" }] }
 ];
 
-const FULL = [
-  { k: "2026-06-02", dow: "Mon", d: "02", we: false },
-  { k: "2026-06-03", dow: "Tue", d: "03", we: false },
-  { k: "2026-06-04", dow: "Wed", d: "04", we: false, today: true },
-  { k: "2026-06-05", dow: "Thu", d: "05", we: false },
-  { k: "2026-06-06", dow: "Fri", d: "06", we: false },
-  { k: "2026-06-07", dow: "Sat", d: "07", we: true },
-  { k: "2026-06-08", dow: "Sun", d: "08", we: true }
-];
-
 const B = [
   { id: "BL-2025-041", date: "2026-06-02", time: "04:30", vehicle: "MH-12-BMD-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087201", operators: ["Ramesh Patil", "Suresh Yadav"], crew: ["Mike Sullivan"], products: [["ANE", 22, "t"], ["Detonator 1.5m", 400, "ea"]], services: [["Site Service & Setup", 1, "ea"]], status: "Submitted" },
   { id: "BL-2025-042", date: "2026-06-02", time: "08:00", vehicle: "MH-12-BMD-02", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit B", po: "4500087202", operators: ["Blair Huntingdon"], crew: ["Dan Brooks"], products: [["Bulk Emulsion", 18, "t"]], services: [], status: "Submitted" },
@@ -63,9 +53,26 @@ export default function SchedulePage() {
   const [mode, setMode] = useState("fleet");
   const [collapsed, setCollapsed] = useState({});
   const [activePanel, setActivePanel] = useState(null);
+  const [baseDate, setBaseDate] = useState(new Date("2026-06-01T00:00:00"));
+
+  const fullWeek = React.useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const result = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const isToday = d.getTime() === new Date("2026-06-04T00:00:00").getTime(); // Mock today
+      result.push({ k: `${yyyy}-${mm}-${dd}`, dow: days[d.getDay()], d: dd, we: isWeekend, today: isToday });
+    }
+    return result;
+  }, [baseDate]);
 
   const groupsList = mode === "fleet" ? VGROUPS : CGROUPS;
-  const activeWeek = workingWeek ? FULL.filter(d => !d.we) : FULL;
+  const activeWeek = workingWeek ? fullWeek.filter(d => !d.we) : fullWeek;
   const dayIndex = (k) => activeWeek.findIndex(d => d.k === k);
 
   const toggleGroup = (t) => {
@@ -330,10 +337,17 @@ export default function SchedulePage() {
               <span style={{ position: 'absolute', top: 2, left: workingWeek ? 2 : 18, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }}></span>
             </span>
           </button>
-          <button style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-left"></i></button>
-          <button style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${LN}`, background: WT, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13.5, color: INK }}><i className="ti ti-calendar" style={{ color: O }}></i>02 Jun – 08 Jun</button>
-          <button style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
-          <button style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
+          <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() - 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-left"></i></button>
+          <button style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${LN}`, background: WT, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13.5, color: INK }}><i className="ti ti-calendar" style={{ color: O }}></i>
+            {(() => {
+              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              const sDate = new Date(fullWeek[0].k);
+              const eDate = new Date(fullWeek[6].k);
+              return `${fullWeek[0].d} ${months[sDate.getMonth()]} – ${fullWeek[6].d} ${months[eDate.getMonth()]}`;
+            })()}
+          </button>
+          <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
+          <button onClick={() => setBaseDate(new Date("2026-06-01T00:00:00"))} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
         </div>
       </div>
 

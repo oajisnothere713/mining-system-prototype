@@ -4,7 +4,7 @@ import axiosInstance from '../api/axiosInstance';
  * Get deliveries filtered by plant and optionally by status.
  */
 export async function getDeliveries(plantCode, status) {
-  const params = { plant: plantCode };
+  const params = { plant: plantCode, _t: Date.now() };
   if (status && status !== 'All') params.status = status;
   const res = await axiosInstance.get('/deliveries', { params });
   return res.data.data;
