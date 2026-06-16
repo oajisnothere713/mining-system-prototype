@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import './SchedulePage.css';
+import CrewPlanner from './CrewPlanner';
+import FleetPlanner from './FleetPlanner';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -53,7 +55,7 @@ export default function SchedulePage() {
   const [mode, setMode] = useState("fleet");
   const [collapsed, setCollapsed] = useState({});
   const [activePanel, setActivePanel] = useState(null);
-  const [baseDate, setBaseDate] = useState(new Date("2026-06-01T00:00:00"));
+  const [baseDate, setBaseDate] = useState(new Date());
 
   const fullWeek = React.useMemo(() => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -65,7 +67,8 @@ export default function SchedulePage() {
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
       const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const isToday = d.getTime() === new Date("2026-06-04T00:00:00").getTime(); // Mock today
+      const today = new Date();
+      const isToday = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
       result.push({ k: `${yyyy}-${mm}-${dd}`, dow: days[d.getDay()], d: dd, we: isWeekend, today: isToday });
     }
     return result;
@@ -94,7 +97,12 @@ export default function SchedulePage() {
 
   const groupCount = (g) => {
     const ids = g.lanes.map(l => l.id);
-    return B.filter(b => mode === "fleet" ? ids.indexOf(b.vehicle) >= 0 : people(b).some(p => ids.indexOf(p) >= 0)).length;
+    return B.filter(b => {
+      const belongs = mode === "fleet" ? ids.indexOf(b.vehicle) >= 0 : people(b).some(p => ids.indexOf(p) >= 0);
+      if (!belongs) return false;
+      if (b.multiDay) return dayIndex(b.multiDay.from) >= 0 || dayIndex(b.multiDay.to) >= 0;
+      return dayIndex(b.date) >= 0;
+    }).length;
   };
 
   // ─── CARD COMPONENT ─────────────────────────────
@@ -324,7 +332,7 @@ export default function SchedulePage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', gap: 4, background: WT, border: `1px solid ${LN}`, borderRadius: 10, padding: 4 }}>
-          {["Schedule", "Daily Totals", "Staff Availability", "Vehicle Availability"].map(t => (
+          {["Schedule", "Staff Availability", "Vehicle Availability"].map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ padding: '8px 14px', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t ? O : 'transparent', color: tab === t ? '#fff' : SL, whiteSpace: 'nowrap' }}>
               {t}
             </button>
@@ -347,7 +355,7 @@ export default function SchedulePage() {
             })()}
           </button>
           <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
-          <button onClick={() => setBaseDate(new Date("2026-06-01T00:00:00"))} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
+          <button onClick={() => setBaseDate(new Date())} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
         </div>
       </div>
 
@@ -463,12 +471,11 @@ export default function SchedulePage() {
             </div>
           </div>
         </div>
-      ) : (
-        <div style={{ background: '#fff', border: `1px dashed ${LN}`, borderRadius: 14, padding: 50, textAlign: 'center', color: SL }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: INK, marginBottom: 6 }}>{tab}</div>
-          <div style={{ fontSize: 13.5 }}>This tab is built next.</div>
-        </div>
-      )}
+      ) : tab === "Staff Availability" ? (
+        <CrewPlanner plant="2025" workingWeek={workingWeek} fullWeek={fullWeek} />
+      ) : tab === "Vehicle Availability" ? (
+        <FleetPlanner plant="2025" workingWeek={workingWeek} fullWeek={fullWeek} />
+      ) : null}
 
       {activePanel && <Panel b={activePanel} onClose={() => setActivePanel(null)} />}
     </div>

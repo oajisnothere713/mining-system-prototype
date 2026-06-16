@@ -37,6 +37,7 @@ export default function StockManagementPage() {
     let cancelled = false;
 
     async function loadStock() {
+      setStockData(null);
       try {
         // Try API
         const apiData = await getStock(selectedPlant.code, day);
@@ -95,6 +96,21 @@ export default function StockManagementPage() {
     >
       {fmt(value, r.uom)}
     </button>
+  );
+
+  const SkeletonRow = () => (
+    <tr className="stock-skeleton-row" style={{ pointerEvents: 'none' }}>
+      <td>
+        <div className="stock-skeleton-box" style={{ width: '120px', marginBottom: '6px' }}></div>
+        <div className="stock-skeleton-box" style={{ width: '80px', height: '14px' }}></div>
+      </td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '50px', marginLeft: 'auto' }}></div></td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '50px', marginLeft: 'auto' }}></div></td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '50px', marginLeft: 'auto' }}></div></td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '50px', marginLeft: 'auto' }}></div></td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '60px', borderRadius: '8px', marginLeft: 'auto', height: '24px' }}></div></td>
+      <td className="stock-td-right"><div className="stock-skeleton-box" style={{ width: '30px', marginLeft: 'auto' }}></div></td>
+    </tr>
   );
 
   const cols = [
@@ -159,6 +175,7 @@ export default function StockManagementPage() {
               </tr>
             </thead>
             <tbody>
+              {!stockData && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
               {rows.map((r) => {
                 const cc = capColor(r);
                 return (

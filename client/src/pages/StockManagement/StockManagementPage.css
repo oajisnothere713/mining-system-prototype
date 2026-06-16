@@ -260,3 +260,20 @@
   color: var(--slate);
   font-size: 14px;
 }
+
+@keyframes stockPulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.2; }
+  100% { opacity: 0.6; }
+}
+
+.stock-skeleton-row td {
+  padding: 13px 16px;
+}
+
+.stock-skeleton-box {
+  height: 18px;
+  background: var(--line);
+  border-radius: 4px;
+  animation: stockPulse 1.5s infinite ease-in-out;
+}

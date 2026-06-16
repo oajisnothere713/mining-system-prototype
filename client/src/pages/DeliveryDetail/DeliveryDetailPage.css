@@ -198,3 +198,12 @@
 .detail-btn-physical:hover {
   opacity: 0.9;
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.lucide-spin {
+  animation: spin 1s linear infinite;
+}

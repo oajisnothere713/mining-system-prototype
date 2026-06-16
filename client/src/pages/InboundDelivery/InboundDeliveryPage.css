@@ -218,3 +218,20 @@
   text-align: center;
   padding: 40px;
 }
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.2; }
+  100% { opacity: 0.6; }
+}
+
+.skeleton-row td {
+  padding: 13px 16px;
+}
+
+.skeleton-box {
+  height: 18px;
+  background: var(--line);
+  border-radius: 4px;
+  animation: pulse 1.5s infinite ease-in-out;
+}

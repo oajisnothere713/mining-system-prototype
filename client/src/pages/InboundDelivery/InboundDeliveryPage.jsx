@@ -36,6 +36,7 @@ export default function InboundDeliveryPage() {
   const [q, setQ] = useState('');
   const [sf, setSf] = useState('All');
   const [showF, setShowF] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchDeliveries(selectedPlant.code);
@@ -64,11 +65,25 @@ export default function InboundDeliveryPage() {
   });
 
   const handleSync = async () => {
+    setSyncing(true);
     const result = await syncERP(selectedPlant.code);
+    setSyncing(false);
     if (result) {
       toast(result.changed ? 'Synced with ERP · corrected delivery received, PGR now enabled' : 'Synced with ERP · no changes');
     }
   };
+
+  const SkeletonRow = () => (
+    <tr className="skeleton-row" style={{ pointerEvents: 'none' }}>
+      <td><div className="skeleton-box" style={{ width: '80px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '90px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '80px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '80px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '140px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '60px' }}></div></td>
+      <td><div className="skeleton-box" style={{ width: '90px', borderRadius: '100px' }}></div></td>
+    </tr>
+  );
 
   return (
     <div>
@@ -145,6 +160,7 @@ export default function InboundDeliveryPage() {
             </tr>
           </thead>
           <tbody>
+            {syncing && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
             {filtered.map((d) => (
               <tr key={d.id} onClick={() => navigate(`/deliveries/${d.id}`)}>
                 <td className="ibd-id">{d.id}</td>
