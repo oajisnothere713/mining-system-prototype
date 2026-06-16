@@ -354,6 +354,7 @@ const syncERP = async (req, res, next) => {
     }
 
     const updatedDeliveries = [];
+    const affectedStockKeys = new Set(); // Collect unique plant|material pairs to recalculate stock efficiently
 
     // 1. Promote physical_pending -> in_transit
     for (const delivery of pendingDeliveries) {
@@ -368,9 +369,9 @@ const syncERP = async (req, res, next) => {
 
       await delivery.save();
 
-      // Recalculate stock for each material in this delivery
+      // Track affected stock keys for batch recalculation later
       for (const line of delivery.lines) {
-        await recalcStockInbound(delivery.plant, line.material);
+        affectedStockKeys.add(`${delivery.plant.toString()}|${line.material.toString()}`);
       }
 
       const populated = await findDeliveryByIdOrNumberPopulated(delivery._id);
@@ -427,9 +428,9 @@ const syncERP = async (req, res, next) => {
           lines: lines,
         });
 
-        // Recalculate stock for each material in this delivery
+        // Track affected stock keys for batch recalculation later
         for (const line of newDelivery.lines) {
-          await recalcStockInbound(newDelivery.plant, line.material);
+          affectedStockKeys.add(`${newDelivery.plant.toString()}|${line.material.toString()}`);
         }
 
         const populated = await findDeliveryByIdOrNumberPopulated(newDelivery._id);
@@ -440,6 +441,13 @@ const syncERP = async (req, res, next) => {
     if (updatedDeliveries.length === 0) {
       return res.json({ success: true, message: 'No deliveries synced or generated.', data: [] });
     }
+
+    // Recalculate stock concurrently for all unique affected plant+material combinations
+    const recalcPromises = Array.from(affectedStockKeys).map(key => {
+      const [plantId, materialId] = key.split('|');
+      return recalcStockInbound(plantId, materialId);
+    });
+    await Promise.all(recalcPromises);
 
     res.json({
       success: true,

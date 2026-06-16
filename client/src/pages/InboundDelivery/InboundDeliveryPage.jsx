@@ -105,7 +105,11 @@ export default function InboundDeliveryPage() {
             <div className="ibd-card-icon" style={{ background: c.soft }}>
               <c.icon size={18} style={{ color: c.color }} />
             </div>
-            <div className="ibd-card-value">{c.val}</div>
+            {loading ? (
+              <div className="skeleton-box" style={{ height: 28, width: 40, marginTop: 4, marginBottom: 5 }}></div>
+            ) : (
+              <div className="ibd-card-value">{c.val}</div>
+            )}
             <div className="ibd-card-label">{c.label}</div>
           </div>
         ))}
@@ -160,8 +164,8 @@ export default function InboundDeliveryPage() {
             </tr>
           </thead>
           <tbody>
-            {syncing && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
-            {filtered.map((d) => (
+            {(loading || syncing) && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
+            {!loading && filtered.map((d) => (
               <tr key={d.id} onClick={() => navigate(`/deliveries/${d.id}`)}>
                 <td className="ibd-id">{d.id}</td>
                 <td className="ibd-po">{d.po}</td>
@@ -172,10 +176,10 @@ export default function InboundDeliveryPage() {
                 <td><Pill status={ibdStatus(d)} /></td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr className="ibd-empty-row">
                 <td colSpan={7}>
-                  {loading ? 'Loading deliveries...' : 'No deliveries match your filters.'}
+                  No deliveries match your filters.
                 </td>
               </tr>
             )}
