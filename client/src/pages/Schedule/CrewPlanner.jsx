@@ -82,7 +82,7 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
     const c={Available:0,Assigned:0,Unavailable:0,"On Long Leave":0,"Off-shift":0};
     groups.forEach(g=>g.members.forEach(p=>WEEK.forEach(d=>{c[cellState(p,d.k).status]++;})));
     return c;
-  },[plant,ovr,workingWeek]);
+  },[plant,ovr,workingWeek,fullWeek]);
 
   const setRange=(person,fromKey,toKey,status,comment)=>{
     let fi=WEEK.findIndex(d=>d.k===fromKey),ti=WEEK.findIndex(d=>d.k===toKey);
@@ -184,7 +184,7 @@ function CellPopover({week,pop,cellState,onClose,onSave}){
   }
   return(<Overlay onClose={onClose}><div style={popStyle(340)}>
     <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{pop.person}</div>
-    <div style={{fontSize:12.5,color:SLATE,marginBottom:14}}>Set availability from {day.dow} {day.d} Jun</div>
+    <div style={{fontSize:12.5,color:SLATE,marginBottom:14}}>Set availability from {day.dow} {day.d}</div>
     <Lbl>Status</Lbl>
     <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
       {EDITABLE.map(s=>(
@@ -195,7 +195,7 @@ function CellPopover({week,pop,cellState,onClose,onSave}){
     </div>
     <Lbl>Apply through (optional)</Lbl>
     <select value={toKey} onChange={e=>setToKey(e.target.value)} style={{width:"100%",padding:"9px 11px",border:`1px solid ${LINE}`,borderRadius:8,fontSize:13,marginBottom:14,cursor:"pointer",fontFamily:"inherit"}}>
-      {week.map(d=><option key={d.k} value={d.k}>{d.dow} {d.d} Jun</option>)}
+      {week.map(d=><option key={d.k} value={d.k}>{d.dow} {d.d}</option>)}
     </select>
     <Lbl>Comment</Lbl>
     <textarea value={comment} onChange={e=>setComment(e.target.value)} rows={2} placeholder="Reason / note (visible on the roster)" style={{width:"100%",padding:"9px 11px",border:`1px solid ${LINE}`,borderRadius:8,fontSize:13,resize:"none",marginBottom:14,fontFamily:"inherit"}}/>
