@@ -8,6 +8,7 @@ import {
   XCircle,
   AlertTriangle,
   Info,
+  Loader2,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext/ToastContext';
 import { usePlant } from '../../context/PlantContext/PlantContext';
@@ -37,6 +38,7 @@ export default function DeliveryDetailPage() {
   const [delivery, setDelivery] = useState(null);
   const [lines, setLines] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -83,22 +85,26 @@ export default function DeliveryDetailPage() {
   const allMatch = lines.every(lineMatch);
 
   const handleConfirmPGR = async () => {
+    setSaving(true);
     try {
       await confirmPGR(delivery.id, lines);
       toast(`Goods Receipt posted for ${delivery.id} · stock updated to PGR Complete`);
       navigate('/deliveries');
     } catch {
       toast('Failed to confirm PGR');
+      setSaving(false);
     }
   };
 
   const handleReceivePhysical = async () => {
+    setSaving(true);
     try {
       await receivePhysical(delivery.id, lines);
       toast(`${delivery.id} physically received · shown as PGR Pending in stock`);
       navigate('/deliveries');
     } catch {
       toast('Failed to receive physically');
+      setSaving(false);
     }
   };
 
@@ -202,8 +208,8 @@ export default function DeliveryDetailPage() {
                 <button disabled className="detail-btn-solid detail-btn-blocked">
                   <ClipboardCheck size={18} /> Confirm Goods Receipt (blocked)
                 </button>
-                <button onClick={handleReceivePhysical} className="detail-btn-solid detail-btn-physical">
-                  <Package size={18} /> Receive Physically (PGR Pending)
+                <button onClick={handleReceivePhysical} disabled={saving} className="detail-btn-solid detail-btn-physical" style={{ opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                  {saving ? <><Loader2 size={18} className="lucide-spin" /> Processing...</> : <><Package size={18} /> Receive Physically (PGR Pending)</>}
                 </button>
               </div>
             </>
@@ -212,8 +218,8 @@ export default function DeliveryDetailPage() {
               <Banner color="var(--blue)" soft="var(--blue-soft)" icon={Info}>
                 All lines match the expected quantities. On confirmation, a Goods Receipt posts to ERP and stock updates in real time as PGR Complete — no SAP GUI needed.
               </Banner>
-              <button onClick={handleConfirmPGR} className="detail-btn-solid detail-btn-confirm">
-                <ClipboardCheck size={18} /> Confirm Goods Receipt
+              <button onClick={handleConfirmPGR} disabled={saving} className="detail-btn-solid detail-btn-confirm" style={{ opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                {saving ? <><Loader2 size={18} className="lucide-spin" /> Processing...</> : <><ClipboardCheck size={18} /> Confirm Goods Receipt</>}
               </button>
             </>
           )}
