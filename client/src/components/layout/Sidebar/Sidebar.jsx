@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Boxes,
   Factory,
+  Sparkles,
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -18,7 +19,7 @@ const navItems = [
   { key: '/portal', label: 'Customer Portal', icon: Boxes, soon: true },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ aiOpen, toggleAi }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -51,6 +52,21 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      <div className="sidebar-ai-container" style={{ padding: '12px', borderTop: '1px solid #E6E9ED' }}>
+        <button 
+          onClick={toggleAi} 
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 13px',
+            border: 'none', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit',
+            background: aiOpen ? 'linear-gradient(135deg, rgba(232,89,12,.15), rgba(255,140,66,.1))' : 'transparent',
+            color: aiOpen ? '#E8590C' : '#5B6470', fontSize: '14px', fontWeight: 600, transition: 'all 0.2s'
+          }}
+        >
+          <Sparkles size={18} style={{ color: aiOpen ? '#E8590C' : '#9CA3AF' }} />
+          <span style={{ flex: 1, textAlign: 'left' }}>FOI Assistant</span>
+          <span style={{ fontSize: '10px', fontWeight: 700, background: aiOpen ? '#E8590C' : '#E8590C', color: '#fff', padding: '2px 6px', borderRadius: '5px' }}>AI</span>
+        </button>
+      </div>
       <div className="sidebar-footer">
         Prototype v2 · Demo data only
         <br />

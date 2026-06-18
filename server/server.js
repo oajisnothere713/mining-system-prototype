@@ -12,6 +12,7 @@ const plantRoutes = require('./routes/plantRoutes/plantRoutes');
 const materialRoutes = require('./routes/materialRoutes/materialRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes/deliveryRoutes');
 const stockRoutes = require('./routes/stockRoutes/stockRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -28,6 +29,7 @@ app.use('/api/plants', plantRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/stock', stockRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
