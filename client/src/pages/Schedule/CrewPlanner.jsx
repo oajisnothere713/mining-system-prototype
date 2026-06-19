@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Users, HardHat, Lock, MessageSquare, X } from "lucide-react";
 
 /* ============================================================
@@ -70,6 +70,17 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
   const[ovr,setOvr]=useState(INITIAL_OVR);
   const[pop,setPop]=useState(null); // {person, dateKey}
 
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/schedule/crew/${plant}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.status && Object.keys(data.status).length > 0) {
+          setOvr(data.status);
+        }
+      })
+      .catch(err => console.error("Error fetching crew status:", err));
+  }, [plant]);
+
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
   const groups=GROUPS_BY_PLANT[plant];
   const cellState=(person,dk)=>{
@@ -94,6 +105,13 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
         if(status==="Available")delete next[plant][person][dk];
         else next[plant][person][dk]={status,comment:comment||""};
       }
+      
+      fetch(`http://localhost:5000/api/schedule/crew/${plant}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next })
+      }).catch(err => console.error("Error saving crew status:", err));
+
       return next;
     });
   };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './SchedulePage.css';
 import CrewPlanner from './CrewPlanner';
 import FleetPlanner from './FleetPlanner';
+import BookingForm from './BookingForm';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -52,6 +53,7 @@ function shortProd(b) {
 export default function SchedulePage() {
   const [tab, setTab] = useState("Schedule");
   const [workingWeek, setWorkingWeek] = useState(true);
+  const [showBookingForm, setShowBookingForm] = useState(false);
   const [mode, setMode] = useState("fleet");
   const [collapsed, setCollapsed] = useState({});
   const [activePanel, setActivePanel] = useState(null);
@@ -318,6 +320,14 @@ export default function SchedulePage() {
   // ─── MAIN RENDER ──────────────────────────────
   const cols = `repeat(${activeWeek.length}, 1fr)`;
 
+  if (showBookingForm) {
+    return <BookingForm onClose={() => setShowBookingForm(false)} onSaved={(doc) => {
+      // For now, we just close the form. When we update the rest of the architecture, we'll sync the data.
+      console.log('Saved booking:', doc);
+      setShowBookingForm(false);
+    }} />;
+  }
+
   return (
     <div className="schedule-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
@@ -325,7 +335,7 @@ export default function SchedulePage() {
           <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>Blast Scheduling Board</div>
           <div style={{ fontSize: 14, color: SL, marginTop: 5 }}>Panna (2025) · Madhya Pradesh</div>
         </div>
-        <button style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 18px', background: O, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={() => setShowBookingForm(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 18px', background: O, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
           <i className="ti ti-plus" style={{ fontSize: 16 }}></i>New Booking
         </button>
       </div>
