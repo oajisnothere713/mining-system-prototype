@@ -397,12 +397,12 @@ export default function SchedulePage() {
                 const ic = collapsed[g.type];
                 return (
                   <React.Fragment key={g.type}>
-                    <div onClick={() => toggleGroup(g.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: '#E2E6EA', cursor: 'pointer', borderLeft: `4px solid ${O}`, borderBottom: `1px solid ${LN}` }}>
-                      <i className={`ti ti-chevron-${ic ? "right" : "down"}`} style={{ fontSize: 16, color: SL }}></i>
+                    <div onClick={() => toggleGroup(g.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: '#2B2F36', cursor: 'pointer', borderLeft: `4px solid ${O}`, borderBottom: `1px solid ${LN}` }}>
+                      <i className={`ti ti-chevron-${ic ? "right" : "down"}`} style={{ fontSize: 16, color: '#A8AEB8' }}></i>
                       <i className={`ti ${g.icon}`} style={{ fontSize: 17, color: O }}></i>
-                      <span style={{ fontSize: 13.5, fontWeight: 700, color: INK }}>{g.type}</span>
-                      <span style={{ fontSize: 11.5, color: SL }}>{g.hint}</span>
-                      <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: INK, background: 'rgba(0,0,0,.06)', padding: '2px 10px', borderRadius: 100 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>{g.type}</span>
+                      <span style={{ fontSize: 11.5, color: '#A8AEB8' }}>{g.hint}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,.15)', padding: '2px 10px', borderRadius: 100 }}>
                         {groupCount(g)} booking{groupCount(g) !== 1 ? "s" : ""}
                       </span>
                     </div>
