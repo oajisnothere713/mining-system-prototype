@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Truck, Lock, MessageSquare } from "lucide-react";
 
 /* ============================================================
@@ -54,6 +54,17 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
   const[ovr,setOvr]=useState(INITIAL_OVR);
   const[pop,setPop]=useState(null);
 
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/schedule/fleet/${plant}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.status && Object.keys(data.status).length > 0) {
+          setOvr(data.status);
+        }
+      })
+      .catch(err => console.error("Error fetching fleet status:", err));
+  }, [plant]);
+
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
   const groups=GROUPS_BY_PLANT[plant];
   const cellState=(v,dk)=>{
@@ -72,6 +83,13 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
     setOvr(prev=>{
       const next={...prev,[plant]:{...prev[plant],[v]:{...(prev[plant]?.[v]||{})}}};
       for(let i=fi;i<=ti;i++){const dk=WEEK[i].k;const cs=cellState(v,dk);if(cs.locked)continue;if(status==="Available")delete next[plant][v][dk];else next[plant][v][dk]={status,comment:comment||""};}
+      
+      fetch(`http://localhost:5000/api/schedule/fleet/${plant}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next })
+      }).catch(err => console.error("Error saving fleet status:", err));
+
       return next;
     });
   };
