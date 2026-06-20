@@ -35,6 +35,7 @@ export default function InboundDeliveryPage() {
   const { deliveries, loading, fetchDeliveries, syncERP } = useDeliveries();
   const [q, setQ] = useState('');
   const [sf, setSf] = useState('All');
+  const [df, setDf] = useState('');
   const [showF, setShowF] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
@@ -42,7 +43,7 @@ export default function InboundDeliveryPage() {
     fetchDeliveries(selectedPlant.code);
   }, [selectedPlant.code, fetchDeliveries]);
 
-  const rows = deliveries.filter((d) => d.plant === selectedPlant.code);
+  const rows = deliveries.filter((d) => d.plant === selectedPlant.code && !d.hidden);
 
   const counts = useMemo(() => ({
     total: rows.length,
@@ -61,7 +62,17 @@ export default function InboundDeliveryPage() {
 
   const filtered = rows.filter((d) => {
     const hay = (d.id + d.po + d.supplier + d.lines.map((l) => l.material).join(' ')).toLowerCase();
-    return (!q || hay.includes(q.toLowerCase())) && (sf === 'All' || ibdStatus(d) === sf);
+    
+    let dfFormatted = '';
+    if (df) {
+      const [y, m, day] = df.split('-');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      dfFormatted = `${day} ${months[parseInt(m, 10) - 1]} ${y}`;
+    }
+
+    return (!q || hay.includes(q.toLowerCase())) && 
+           (sf === 'All' || ibdStatus(d) === sf) &&
+           (!df || d.date === dfFormatted);
   });
 
   const handleSync = async () => {
@@ -148,7 +159,15 @@ export default function InboundDeliveryPage() {
               options={['All', 'Awaiting PGR', 'Qty Mismatch', 'PGR Pending', 'In Transit', 'PGR Complete']}
             />
           </Field>
-          <button onClick={() => { setSf('All'); setQ(''); }} className="ibd-filter-clear">
+          <Field label="Date">
+            <input 
+              type="date" 
+              value={df} 
+              onChange={(e) => setDf(e.target.value)}
+              style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'inherit', color: 'var(--ink)' }}
+            />
+          </Field>
+          <button onClick={() => { setSf('All'); setQ(''); setDf(''); }} className="ibd-filter-clear">
             Clear all
           </button>
         </div>
@@ -165,7 +184,7 @@ export default function InboundDeliveryPage() {
           </thead>
           <tbody>
             {(loading || syncing) && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
-            {!loading && filtered.map((d) => (
+            {!(loading || syncing) && filtered.map((d) => (
               <tr key={d.id} onClick={() => navigate(`/deliveries/${d.id}`)}>
                 <td className="ibd-id">{d.id}</td>
                 <td className="ibd-po">{d.po}</td>
@@ -176,7 +195,7 @@ export default function InboundDeliveryPage() {
                 <td><Pill status={ibdStatus(d)} /></td>
               </tr>
             ))}
-            {!loading && filtered.length === 0 && (
+            {!(loading || syncing) && filtered.length === 0 && (
               <tr className="ibd-empty-row">
                 <td colSpan={7}>
                   No deliveries match your filters.
