@@ -369,15 +369,18 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 18, marginBottom: 14, flexWrap: 'wrap', fontSize: 12.5, color: SL, alignItems: 'center', background: '#fff', border: `1px solid ${LN}`, borderRadius: 10, padding: '10px 16px' }}>
-        <span style={{ fontWeight: 700, color: INK, fontSize: 12 }}>Status:</span>
-        {ORDER.map(k => (
-          <span key={k} style={{ fontSize: 10, fontWeight: 700, color: STATUS[k].fg, background: STATUS[k].bg, padding: '2px 8px', borderRadius: 100 }}>{k}</span>
-        ))}
-        <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: SL }}>
-          <i className="ti ti-repeat" style={{ color: O }}></i> Recurring &nbsp;·&nbsp; <i className="ti ti-arrow-right" style={{ color: O }}></i> Multi-day
-        </span>
-      </div>
+      {tab === "Schedule" && (
+        <div style={{ display: 'flex', gap: 18, marginBottom: 14, flexWrap: 'wrap', fontSize: 12.5, color: SL, alignItems: 'center', background: '#fff', border: `1px solid ${LN}`, borderRadius: 10, padding: '10px 16px' }}>
+          <span style={{ fontWeight: 700, color: INK, fontSize: 12 }}>Status:</span>
+          {ORDER.map(k => (
+            <span key={k} style={{ fontSize: 10, fontWeight: 700, color: STATUS[k].fg, background: STATUS[k].bg, padding: '2px 8px', borderRadius: 100 }}>{k}</span>
+          ))}
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: SL }}>
+            <i className="ti ti-repeat" style={{ color: O }}></i> Recurring &nbsp;·&nbsp; <i className="ti ti-arrow-right" style={{ color: O }}></i> Multi-day
+          </span>
+        </div>
+      )}
+
 
       {tab === "Schedule" ? (
         <div style={{ background: WT, border: `1px solid ${LN}`, borderRadius: 14, overflow: 'hidden' }}>

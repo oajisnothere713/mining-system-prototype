@@ -25,6 +25,7 @@ const formatDelivery = (d) => {
     date: formatDate(d.date),
     supplier: d.supplier,
     state: d.state,
+    hidden: d.hidden,
     lines: d.lines.map(line => ({
       _id: line._id,
       material: line.material ? (typeof line.material === 'object' && line.material.name ? line.material.name : line.material.toString()) : '',
@@ -356,16 +357,30 @@ const syncERP = async (req, res, next) => {
     const updatedDeliveries = [];
     const affectedStockKeys = new Set(); // Collect unique plant|material pairs to recalculate stock efficiently
 
-    // 1. Promote physical_pending -> in_transit
+    // 1. Process physical_pending deliveries (Quantity Split)
     for (const delivery of pendingDeliveries) {
-      // Generate new IBD number
-      delivery.ibdNumber = `IBD-${nextIbdNum++}`;
-      delivery.state = 'in_transit';
+      let hasVariance = false;
+      const newLines = [];
 
-      // Set expected = received for all lines
+      // Check for variance and adjust original delivery lines
       for (const line of delivery.lines) {
+        const missing = line.expected - line.received;
+        if (missing > 0) {
+          hasVariance = true;
+          newLines.push({
+            material: line.material,
+            expected: missing,
+            received: missing
+          });
+        }
+        // Correct the original line to match what was received
         line.expected = line.received;
       }
+
+      // Mark the original delivery as complete (so stock is officially added)
+      // and hide it from the UI so it appears "deleted" to the user.
+      delivery.state = 'complete';
+      delivery.hidden = true;
 
       await delivery.save();
 
@@ -374,8 +389,29 @@ const syncERP = async (req, res, next) => {
         affectedStockKeys.add(`${delivery.plant.toString()}|${line.material.toString()}`);
       }
 
-      const populated = await findDeliveryByIdOrNumberPopulated(delivery._id);
-      updatedDeliveries.push(formatDelivery(populated));
+      const populatedOld = await findDeliveryByIdOrNumberPopulated(delivery._id);
+      updatedDeliveries.push(formatDelivery(populatedOld));
+
+      // If there was a variance, create a new "remainder" delivery
+      if (hasVariance) {
+        const newDelivery = await Delivery.create({
+          ibdNumber: `IBD-${nextIbdNum++}`,
+          poNumber: delivery.poNumber,
+          poDate: delivery.poDate,
+          plant: delivery.plant,
+          date: new Date(),
+          supplier: delivery.supplier,
+          state: 'in_transit',
+          lines: newLines
+        });
+
+        // Track stock keys for the new delivery
+        for (const line of newDelivery.lines) {
+          affectedStockKeys.add(`${newDelivery.plant.toString()}|${line.material.toString()}`);
+        }
+        const populatedNew = await findDeliveryByIdOrNumberPopulated(newDelivery._id);
+        updatedDeliveries.push(formatDelivery(populatedNew));
+      }
     }
 
     // 2. Generate 5 random deliveries if we have a target plant

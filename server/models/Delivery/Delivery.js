@@ -60,6 +60,10 @@ const deliverySchema = new Schema(
       },
       default: 'awaiting',
     },
+    hidden: {
+      type: Boolean,
+      default: false,
+    },
     lines: [deliveryLineSchema],
   },
   { timestamps: true }

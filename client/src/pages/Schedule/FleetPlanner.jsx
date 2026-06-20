@@ -104,9 +104,6 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
               <span style={{fontSize:20,fontWeight:700}}>{summary[k]}</span>
               <span style={{fontSize:12.5,color:SLATE,fontWeight:500,lineHeight:1.2}}>{k}<br/><span style={{fontSize:10.5}}>vehicle-days this week</span></span>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,paddingTop:6,borderTop:`1px solid ${LINE}`,fontSize:12,color:SLATE}}>
-              <span style={{width:11,height:11,borderRadius:3,background:ST[k].dot}}/>{k}
-            </div>
           </div>
         ))}
       </div>
