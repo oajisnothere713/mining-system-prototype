@@ -39,6 +39,7 @@ export default function DeliveryDetailPage() {
   const [lines, setLines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [receiptDate, setReceiptDate] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -85,9 +86,13 @@ export default function DeliveryDetailPage() {
   const allMatch = lines.every(lineMatch);
 
   const handleConfirmPGR = async () => {
+    if (!receiptDate) {
+      toast('Please select the date of goods received');
+      return;
+    }
     setSaving(true);
     try {
-      await confirmPGR(delivery.id, lines);
+      await confirmPGR(delivery.id, lines, receiptDate);
       toast(`Goods Receipt posted for ${delivery.id} · stock updated to PGR Complete`);
       navigate('/deliveries');
     } catch {
@@ -97,9 +102,13 @@ export default function DeliveryDetailPage() {
   };
 
   const handleReceivePhysical = async () => {
+    if (!receiptDate) {
+      toast('Please select the date of goods received');
+      return;
+    }
     setSaving(true);
     try {
-      await receivePhysical(delivery.id, lines);
+      await receivePhysical(delivery.id, lines, receiptDate);
       toast(`${delivery.id} physically received · shown as PGR Pending in stock`);
       navigate('/deliveries');
     } catch {
@@ -126,7 +135,17 @@ export default function DeliveryDetailPage() {
       </div>
 
       <div className="detail-subtitle">
-        Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving {delivery.date}
+        Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving
+        {!done && !physical ? (
+          <input 
+            type="date" 
+            value={receiptDate}
+            onChange={(e) => setReceiptDate(e.target.value)}
+            style={{ marginLeft: 6, padding: '2px 6px', border: '1px solid var(--line)', borderRadius: 4, outline: 'none', fontFamily: 'inherit' }}
+          />
+        ) : (
+          ` ${delivery.date}`
+        )}
       </div>
 
       <div className="detail-chain">

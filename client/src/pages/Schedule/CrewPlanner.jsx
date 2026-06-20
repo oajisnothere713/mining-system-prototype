@@ -75,7 +75,11 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
       .then(res => res.json())
       .then(data => {
         if (data && data.status && Object.keys(data.status).length > 0) {
-          setOvr(data.status);
+          // If the DB has legacy corrupted data with plantCode as keys, extract the correct one
+          let loadedStatus = data.status;
+          if (loadedStatus[plant]) loadedStatus = loadedStatus[plant];
+          
+          setOvr(prev => ({ ...prev, [plant]: loadedStatus }));
         }
       })
       .catch(err => console.error("Error fetching crew status:", err));
@@ -109,7 +113,7 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
       fetch(`http://localhost:5000/api/schedule/crew/${plant}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next })
+        body: JSON.stringify({ status: next[plant] })
       }).catch(err => console.error("Error saving crew status:", err));
 
       return next;

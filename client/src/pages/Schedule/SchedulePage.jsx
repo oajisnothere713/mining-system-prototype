@@ -50,6 +50,85 @@ function shortProd(b) {
   return p.join(" · ");
 }
 
+const WeekPicker = ({ currentBase, onChange }) => {
+  const [viewDate, setViewDate] = useState(new Date(currentBase));
+
+  const weeks = React.useMemo(() => {
+    const y = viewDate.getFullYear();
+    const m = viewDate.getMonth();
+    const firstDay = new Date(y, m, 1);
+    let startDay = firstDay.getDay() || 7;
+    const start = new Date(firstDay);
+    start.setDate(1 - (startDay - 1));
+
+    const days = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      days.push(d);
+    }
+    
+    const wks = [];
+    for (let i = 0; i < 42; i += 7) {
+      wks.push(days.slice(i, i + 7));
+    }
+    return wks;
+  }, [viewDate]);
+
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  return (
+    <div style={{ position: 'absolute', top: 42, left: 0, background: '#fff', border: `1px solid ${LN}`, borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.1)', padding: 16, zIndex: 100, width: 280 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <button onClick={() => { const d = new Date(viewDate); d.setMonth(d.getMonth() - 1); setViewDate(d); }} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: SL }}><i className="ti ti-chevron-left"></i></button>
+        <span style={{ fontWeight: 700, fontSize: 14, color: INK }}>{months[viewDate.getMonth()]} {viewDate.getFullYear()}</span>
+        <button onClick={() => { const d = new Date(viewDate); d.setMonth(d.getMonth() + 1); setViewDate(d); }} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', fontSize: 11, fontWeight: 700, color: SL, marginBottom: 8 }}>
+        {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => <div key={d}>{d}</div>)}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {weeks.map((week, i) => {
+          const isActive = week.some(d => d.getFullYear() === currentBase.getFullYear() && d.getMonth() === currentBase.getMonth() && d.getDate() === currentBase.getDate());
+          
+          return (
+            <div 
+              key={i} 
+              onClick={() => onChange(week[0])}
+              style={{ 
+                display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', cursor: 'pointer', 
+                background: isActive ? OS : 'transparent',
+                borderRadius: 6,
+                padding: '2px 0'
+              }}
+              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = '#f5f7f9'; }}
+              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {week.map((d, j) => {
+                const isCurrentMonth = d.getMonth() === viewDate.getMonth();
+                const isToday = new Date().toDateString() === d.toDateString();
+                return (
+                  <div key={j} style={{ 
+                    padding: '6px 0', textAlign: 'center', fontSize: 13, fontWeight: 500,
+                    color: isActive ? O : isCurrentMonth ? INK : '#ced4da',
+                  }}>
+                    <span style={{
+                      display: 'inline-block', width: 24, height: 24, lineHeight: '24px', borderRadius: '50%',
+                      border: isToday && !isActive ? `1px solid ${O}` : '1px solid transparent'
+                    }}>
+                      {d.getDate()}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function SchedulePage() {
   const [tab, setTab] = useState("Schedule");
   const [workingWeek, setWorkingWeek] = useState(true);
@@ -58,6 +137,7 @@ export default function SchedulePage() {
   const [collapsed, setCollapsed] = useState({});
   const [activePanel, setActivePanel] = useState(null);
   const [baseDate, setBaseDate] = useState(new Date());
+  const [showWeekPicker, setShowWeekPicker] = useState(false);
 
   const fullWeek = React.useMemo(() => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -356,14 +436,29 @@ export default function SchedulePage() {
             </span>
           </button>
           <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() - 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-left"></i></button>
-          <button style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${LN}`, background: WT, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13.5, color: INK }}><i className="ti ti-calendar" style={{ color: O }}></i>
-            {(() => {
-              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-              const sDate = new Date(fullWeek[0].k);
-              const eDate = new Date(fullWeek[6].k);
-              return `${fullWeek[0].d} ${months[sDate.getMonth()]} – ${fullWeek[6].d} ${months[eDate.getMonth()]}`;
-            })()}
-          </button>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button 
+              onClick={() => setShowWeekPicker(!showWeekPicker)}
+              style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${LN}`, background: WT, display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontWeight: 600, fontSize: 13.5, color: INK }}
+            >
+              <i className="ti ti-calendar" style={{ color: O }}></i>
+              {(() => {
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const sDate = new Date(fullWeek[0].k);
+                const eDate = new Date(fullWeek[6].k);
+                return `${fullWeek[0].d} ${months[sDate.getMonth()]} – ${fullWeek[6].d} ${months[eDate.getMonth()]}`;
+              })()}
+            </button>
+            {showWeekPicker && (
+              <>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 90 }} onClick={() => setShowWeekPicker(false)}></div>
+                <WeekPicker 
+                  currentBase={baseDate} 
+                  onChange={(d) => { setBaseDate(d); setShowWeekPicker(false); }} 
+                />
+              </>
+            )}
+          </div>
           <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
           <button onClick={() => setBaseDate(new Date())} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
         </div>
