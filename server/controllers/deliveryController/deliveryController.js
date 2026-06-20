@@ -261,6 +261,9 @@ const confirmPGR = async (req, res, next) => {
 
     // Update state to complete
     delivery.state = 'complete';
+    if (req.body.date) {
+      delivery.date = new Date(req.body.date);
+    }
 
     // Update received quantities from request body if provided
     if (req.body.lines && Array.isArray(req.body.lines)) {
@@ -300,6 +303,9 @@ const receivePhysical = async (req, res, next) => {
 
     // Update state to physical_pending
     delivery.state = 'physical_pending';
+    if (req.body.date) {
+      delivery.date = new Date(req.body.date);
+    }
 
     // Update received quantities from request body if provided
     if (req.body.lines && Array.isArray(req.body.lines)) {

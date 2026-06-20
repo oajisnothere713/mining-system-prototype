@@ -21,16 +21,16 @@ export async function getDeliveryById(id) {
 /**
  * Confirm goods receipt (PGR) for a delivery.
  */
-export async function confirmPGR(id, lines) {
-  const res = await axiosInstance.patch(`/deliveries/${id}/confirm-pgr`, { lines });
+export async function confirmPGR(id, lines, receiptDate) {
+  const res = await axiosInstance.patch(`/deliveries/${id}/confirm-pgr`, { lines, date: receiptDate });
   return res.data.data;
 }
 
 /**
  * Receive a delivery physically (PGR Pending state).
  */
-export async function receivePhysical(id, lines) {
-  const res = await axiosInstance.patch(`/deliveries/${id}/receive-physical`, { lines });
+export async function receivePhysical(id, lines, receiptDate) {
+  const res = await axiosInstance.patch(`/deliveries/${id}/receive-physical`, { lines, date: receiptDate });
   return res.data.data;
 }
 

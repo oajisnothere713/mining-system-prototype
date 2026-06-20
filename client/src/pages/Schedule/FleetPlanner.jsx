@@ -59,7 +59,9 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
       .then(res => res.json())
       .then(data => {
         if (data && data.status && Object.keys(data.status).length > 0) {
-          setOvr(data.status);
+          let loadedStatus = data.status;
+          if (loadedStatus[plant]) loadedStatus = loadedStatus[plant];
+          setOvr(prev => ({ ...prev, [plant]: loadedStatus }));
         }
       })
       .catch(err => console.error("Error fetching fleet status:", err));
@@ -87,7 +89,7 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
       fetch(`http://localhost:5000/api/schedule/fleet/${plant}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next })
+        body: JSON.stringify({ status: next[plant] })
       }).catch(err => console.error("Error saving fleet status:", err));
 
       return next;
