@@ -4,6 +4,7 @@ import CrewPlanner from './CrewPlanner';
 import FleetPlanner from './FleetPlanner';
 import BookingForm from './BookingForm';
 import { usePlant } from '../../context/PlantContext/PlantContext';
+import { useToast } from '../../context/ToastContext/ToastContext';
 import { fetchBookings, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
@@ -122,6 +123,7 @@ export default function SchedulePage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
   
   const { selectedPlant } = usePlant();
   const plantCode = selectedPlant?.code || "2025";
@@ -152,6 +154,14 @@ export default function SchedulePage() {
       setRefreshKey(k=>k+1);
       setLoading(false);
     });
+
+    const handleRollback = (e) => {
+      if (addToast) addToast(e.detail || "Optimistic update failed. Changes reverted.", "error");
+      setRefreshKey(k => k + 1);
+      setActivePanel(null); // Close panel to avoid showing stale data
+    };
+    window.addEventListener('booking-rollback', handleRollback);
+    return () => window.removeEventListener('booking-rollback', handleRollback);
   }, []);
 
 
@@ -190,6 +200,17 @@ export default function SchedulePage() {
     });
     return flattened;
   }, [refreshKey, plantCode]);
+
+  React.useEffect(() => {
+    setActivePanel(prev => {
+      if (!prev) return prev;
+      const updated = B.find(b => b.id === prev.id);
+      if (updated && JSON.stringify(updated) !== JSON.stringify(prev)) {
+        return updated;
+      }
+      return prev;
+    });
+  }, [B]);
 
   const fullWeek = React.useMemo(() => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
