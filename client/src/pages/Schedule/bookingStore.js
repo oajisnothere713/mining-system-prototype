@@ -315,30 +315,50 @@ export const getBookingsByPlant = (plantCode) => bookings.filter(b => b.plantCod
 export const getBookingById = (id) => bookings.find(b => b._id === id) || null;
 
 /* ---------- WRITE (Optimistic + API sync) ---------- */
+function handleApiError(err, previousState, actionName) {
+  console.error(`Optimistic ${actionName} failed, rolling back!`, err);
+  bookings = previousState;
+  window.dispatchEvent(new CustomEvent('booking-rollback', { detail: `Failed to ${actionName} booking. Changes have been reverted.` }));
+}
+
+function handleResponse(res) {
+  if (!res.ok) throw new Error(`Server returned ${res.status}`);
+}
+
 export function addBooking(doc) {
+  const previousState = [...bookings];
   bookings = [...bookings, doc];
-  fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
+  fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) })
+    .then(handleResponse)
+    .catch(err => handleApiError(err, previousState, "add"));
   return doc;
 }
 export function updateBooking(id, changes) {
+  const previousState = [...bookings];
   bookings = bookings.map(b => b._id === id ? { ...b, ...changes, updatedAt: new Date().toISOString() } : b);
-  fetch(`${API_URL}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) }).catch(console.error);
+  fetch(`${API_URL}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) })
+    .then(handleResponse)
+    .catch(err => handleApiError(err, previousState, "update"));
   return getBookingById(id);
 }
 export function replaceBooking(doc) {
+  const previousState = [...bookings];
   const exists = bookings.some(b => b._id === doc._id);
   bookings = exists ? bookings.map(b => b._id === doc._id ? doc : b) : [...bookings, doc];
   
-  if (exists) {
-    fetch(`${API_URL}/${doc._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
-  } else {
-    fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
-  }
+  const req = exists 
+    ? fetch(`${API_URL}/${doc._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) })
+    : fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) });
+    
+  req.then(handleResponse).catch(err => handleApiError(err, previousState, "save"));
   return doc;
 }
 export function deleteBooking(id) {
+  const previousState = [...bookings];
   bookings = bookings.filter(b => b._id !== id);
-  fetch(`${API_URL}/${id}`, { method: "DELETE" }).catch(console.error);
+  fetch(`${API_URL}/${id}`, { method: "DELETE" })
+    .then(handleResponse)
+    .catch(err => handleApiError(err, previousState, "delete"));
 }
 
 /* ---------- NEXT BLAST NUMBER (unique) ---------- */
