@@ -1,5 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import "./BookingForm.css";
+import CustomSelect from "../../components/ui/CustomSelect";
+import CustomDatePicker from "../../components/ui/CustomDatePicker";
+import CustomTimePicker from "../../components/ui/CustomTimePicker";
 import {
   CUSTOMERS, VEHICLE_GROUPS_BY_PLANT, CREW_GROUPS_BY_PLANT,
   PRODUCT_CATS, PRODUCT_MAP, SERVICES, SERVICE_MAP,
@@ -179,18 +182,14 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     return (
       <div key={pi} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, maxWidth: 760 }}>
         {cs && <span style={{ fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 5, background: cs.bg, color: cs.c, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: .3, flexShrink: 0 }}>{cat}</span>}
-        <select className="fld" value={p.materialId} onChange={e => {
+        <CustomSelect className="fld" value={p.materialId} onChange={val => {
           const newProducts = [...f.dockets[di].products];
-          newProducts[pi].materialId = e.target.value;
+          newProducts[pi].materialId = val;
           setDocket(di, { products: newProducts });
-        }} style={{ flex: 1, fontSize: 13.5 }}>
-          <option value="">Select product…</option>
-          {PRODUCT_CATS.map(c => (
-            <optgroup key={c.cat} label={c.cat}>
-              {c.items.map(pp => <option key={pp.id} value={pp.id}>{pp.name}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        }} style={{ flex: 1, fontSize: 13.5 }} placeholder="Select product…" options={PRODUCT_CATS.flatMap(c => [
+          { label: c.cat, isHeader: true },
+          ...c.items.map(pp => ({ value: pp.id, label: pp.name }))
+        ])} />
         <input className="fld" type="number" min="0" placeholder="Qty" value={p.plannedQty || ""} onChange={e => {
           const newProducts = [...f.dockets[di].products];
           newProducts[pi].plannedQty = e.target.value;
@@ -265,12 +264,12 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
             <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
               <div style={{ flex: 1.4 }}>
                 <label className="lbl">Delivery Date <span style={{ color: "#E8590C" }}>*</span></label>
-                <input type="date" className={`fld ${saveAttempted && !f.date ? "err" : ""}`} value={f.date} onChange={e => set({ date: e.target.value })} />
+                <CustomDatePicker className={`fld ${saveAttempted && !f.date ? "err" : ""}`} value={f.date} onChange={val => set({ date: val })} />
                 {saveAttempted && !f.date && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
               </div>
               <div style={{ flex: 1 }}>
                 <label className="lbl">Start Time</label>
-                <input type="time" className="fld" value={f.startTime} onChange={e => set({ startTime: e.target.value })} />
+                <CustomTimePicker className="fld" value={f.startTime} onChange={val => set({ startTime: val })} />
               </div>
             </div>
             {f.date ? (
@@ -294,7 +293,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
             {f.bookingType === "multi" && (
               <div>
                 <label className="lbl">End Date <span style={{ color: "#E8590C" }}>*</span></label>
-                <input type="date" className={`fld ${saveAttempted && !f.endDate ? "err" : ""}`} value={f.endDate} min={f.date} onChange={e => set({ endDate: e.target.value })} />
+                <CustomDatePicker className={`fld ${saveAttempted && !f.endDate ? "err" : ""}`} value={f.endDate} min={f.date} onChange={val => set({ endDate: val })} />
                 {f.endDate && (
                   <div style={{ marginTop: 7, display: "inline-flex", alignItems: "center", gap: 6, background: "#F5F6F8", border: "1px solid #E4E8ED", borderRadius: 7, padding: "5px 10px", fontSize: 12.5, color: "#5B6470" }}>
                     <i className="ti ti-clock" style={{ color: "#E8590C", fontSize: 13 }}></i>{Math.round((new Date(f.endDate + "T00:00:00") - new Date(f.date + "T00:00:00")) / 86400000) + 1} days total · ends {fmtDate(f.endDate)}
@@ -306,12 +305,10 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
               <>
                 <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
                   <div style={{ flex: 1 }}><label className="lbl">Frequency</label>
-                    <select className="fld" value={f.recFreq} onChange={e => set({ recFreq: e.target.value })}>
-                      <option>Daily</option><option>Weekly</option>
-                    </select>
+                    <CustomSelect className="fld" value={f.recFreq} onChange={val => set({ recFreq: val })} options={["Daily", "Weekly"]} />
                   </div>
                   <div style={{ flex: 1 }}><label className="lbl">Repeat Until <span style={{ color: "#E8590C" }}>*</span></label>
-                    <input type="date" className={`fld ${saveAttempted && !f.recEnd ? "err" : ""}`} value={f.recEnd} min={f.date} onChange={e => set({ recEnd: e.target.value })} />
+                    <CustomDatePicker className={`fld ${saveAttempted && !f.recEnd ? "err" : ""}`} value={f.recEnd} min={f.date} onChange={val => set({ recEnd: val })} />
                   </div>
                 </div>
                 {f.recFreq === "Daily" && (
@@ -335,10 +332,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
             </div>
             <div style={{ marginBottom: cust ? 8 : 18 }}>
               <label className="lbl">Customer <span style={{ color: "#E8590C" }}>*</span></label>
-              <select className={`fld ${saveAttempted && !f.customerId ? "err" : ""}`} value={f.customerId} onChange={e => set({ customerId: e.target.value, shipToSite: "" })}>
-                <option value="">Select customer…</option>
-                {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
-              </select>
+              <CustomSelect className={`fld ${saveAttempted && !f.customerId ? "err" : ""}`} value={f.customerId} onChange={val => set({ customerId: val, shipToSite: "" })} options={CUSTOMERS.map(c => ({ value: c.id, label: `${c.name} (${c.id})` }))} placeholder="Select customer…" />
               {saveAttempted && !f.customerId && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
             </div>
             {cust && (
@@ -352,10 +346,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
             )}
             <div style={{ marginBottom: 16 }}>
               <label className="lbl">Ship-to Site <span style={{ color: "#E8590C" }}>*</span></label>
-              <select className={`fld ${saveAttempted && !f.shipToSite ? "err" : ""}`} disabled={!cust} value={f.shipToSite} onChange={e => set({ shipToSite: e.target.value })}>
-                <option value="">{cust ? "Select site…" : "Select a customer first"}</option>
-                {cust && cust.sites.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <CustomSelect className={`fld ${saveAttempted && !f.shipToSite ? "err" : ""}`} disabled={!cust} value={f.shipToSite} onChange={val => set({ shipToSite: val })} options={cust ? cust.sites : []} placeholder={cust ? "Select site…" : "Select a customer first"} />
               {saveAttempted && !f.shipToSite && cust && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
             </div>
             <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
@@ -419,19 +410,15 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1.65fr", gap: 24, marginBottom: 24 }}>
                   {/* Vehicle */}
                   <div><label className="lbl">Vehicle <span style={{ color: "#E8590C" }}>*</span></label>
-                    <select className={`fld ${saveAttempted && !dk.vehicleId ? "err" : ""}`} value={dk.vehicleId} onChange={e => setDocket(di, { vehicleId: e.target.value })}>
-                      <option value="">Select vehicle…</option>
-                      {VEHICLE_GROUPS.map(g => (
-                        <optgroup key={g.type} label={g.type}>
-                          {g.ids.map(id => {
-                            const busy = f.date ? vehicleAssignments(id, f.date, isEdit ? f._id : null) : [];
-                            const maint = id === "MH-12-BMD-03"; // Hardcoded maintenance for demo
-                            const tag = maint ? " — maintenance" : (busy.length ? " — booked" : " — available");
-                            return <option key={id} value={id} disabled={maint}>{id}{tag}</option>
-                          })}
-                        </optgroup>
-                      ))}
-                    </select>
+                    <CustomSelect className={`fld ${saveAttempted && !dk.vehicleId ? "err" : ""}`} value={dk.vehicleId} onChange={val => setDocket(di, { vehicleId: val })} placeholder="Select vehicle…" options={VEHICLE_GROUPS.flatMap(g => [
+                      { label: g.type, isHeader: true },
+                      ...g.ids.map(id => {
+                        const busy = f.date ? vehicleAssignments(id, f.date, isEdit ? f._id : null) : [];
+                        const maint = id === "MH-12-BMD-03"; // Hardcoded maintenance for demo
+                        const tag = maint ? " — maintenance" : (busy.length ? " — booked" : " — available");
+                        return { value: id, label: `${id}${tag}`, disabled: maint };
+                      })
+                    ])} />
                     {saveAttempted && !dk.vehicleId && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
                     {conf.length > 0 && <div style={{ fontSize: 12, color: "#7A4F00", background: "#FFF9DB", border: "1px solid #F4D78A", borderRadius: 8, padding: "9px 11px", marginTop: 10, display: "flex", gap: 7, alignItems: "flex-start" }}><i className="ti ti-alert-triangle" style={{ color: "#F08C00", flexShrink: 0, marginTop: 1 }}></i><span>Double-booked with <b>{conf.join(", ")}</b> on this date. Allowed — flagged on board.</span></div>}
                   </div>
@@ -558,12 +545,9 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
                         return (
                           <tr key={si}>
                             <td style={{ padding: "6px 8px 6px 0" }}>
-                              <select className="fld" value={s.serviceId} onChange={e => {
-                                const ns = [...dk.services]; ns[si].serviceId = e.target.value; setDocket(di, { services: ns });
-                              }}>
-                                <option value="">Select service…</option>
-                                {SERVICES.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
-                              </select>
+                              <CustomSelect className="fld" value={s.serviceId} onChange={val => {
+                                const ns = [...dk.services]; ns[si].serviceId = val; setDocket(di, { services: ns });
+                              }} placeholder="Select service…" options={SERVICES.map(x => ({ value: x.id, label: x.name }))} />
                             </td>
                             <td style={{ padding: "6px 8px" }}><input className="fld" type="number" min="1" placeholder="1" value={s.qty || ""} onChange={e => {
                               const ns = [...dk.services]; ns[si].qty = e.target.value; setDocket(di, { services: ns });

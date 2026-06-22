@@ -175,7 +175,7 @@ export default function StockManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {!stockData && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
+              {!stockData && Array.from({ length: 15 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
               {rows.map((r) => {
                 const cc = capColor(r);
                 return (
