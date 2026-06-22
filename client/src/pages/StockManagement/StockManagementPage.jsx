@@ -8,9 +8,10 @@ import { buildStock } from '../../utils/stockCalculator/stockCalculator';
 import { DAYS, MATERIALS, HIGH_PCT, LOW_PCT } from '../../utils/constants/constants';
 import { fmt, unit } from '../../utils/formatters/formatters';
 import TypeTag from '../../components/ui/TypeTag/TypeTag';
+import BreakdownTable from '../../components/tables/BreakdownTable/BreakdownTable';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import InfoDot from '../../components/ui/InfoDot/InfoDot';
 import Modal from '../../components/ui/Modal/Modal';
-import BreakdownTable from '../../components/tables/BreakdownTable/BreakdownTable';
 import './StockManagementPage.css';
 
 function LegendDot({ c, soft, label }) {
@@ -28,9 +29,15 @@ function LegendDot({ c, soft, label }) {
 export default function StockManagementPage() {
   const { selectedPlant } = usePlant();
   const { toast } = useToast();
-  const [day, setDay] = useState('Today');
+  const [selectedDate, setSelectedDate] = useState('2026-06-22');
   const [popup, setPopup] = useState(null);
   const [stockData, setStockData] = useState(null);
+
+  const TABS = [
+    { label: "Yesterday", date: "2026-06-21" },
+    { label: "Today", date: "2026-06-22" },
+    { label: "Tomorrow", date: "2026-06-23" },
+  ];
 
   // Try API first, fall back to client-side calculation
   useEffect(() => {
@@ -52,21 +59,21 @@ export default function StockManagementPage() {
       try {
         const deliveries = await getDeliveries(selectedPlant.code);
         if (!cancelled) {
-          const computed = buildStock(deliveries, selectedPlant.code);
-          setStockData(computed[day] || []);
+          const computed = buildStock(deliveries, selectedPlant.code, selectedDate);
+          setStockData(computed[selectedDate] || []);
         }
       } catch {
         if (!cancelled) {
           // Last resort: build with empty deliveries
-          const computed = buildStock([], selectedPlant.code);
-          setStockData(computed[day] || []);
+          const computed = buildStock([], selectedPlant.code, selectedDate);
+          setStockData(computed[selectedDate] || []);
         }
       }
     }
 
     loadStock();
     return () => { cancelled = true; };
-  }, [selectedPlant.code, day]);
+  }, [selectedPlant.code, selectedDate]);
 
   const rows = stockData || [];
 
@@ -131,16 +138,24 @@ export default function StockManagementPage() {
           </div>
         </div>
         <div className="stock-header-right">
-          <div className="stock-day-tabs">
-            {DAYS.map((d) => (
-              <button
-                key={d}
-                onClick={() => setDay(d)}
-                className={`stock-day-tab ${day === d ? 'stock-day-tab--active' : ''}`}
-              >
-                {d}
-              </button>
-            ))}
+          <div className="stock-day-tabs" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 140 }}>
+              <CustomDatePicker 
+                value={selectedDate} 
+                onChange={setSelectedDate} 
+              />
+            </div>
+            <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: 8, padding: 2 }}>
+              {TABS.map((t) => (
+                <button
+                  key={t.date}
+                  onClick={() => setSelectedDate(t.date)}
+                  className={`stock-day-tab ${selectedDate === t.date ? 'stock-day-tab--active' : ''}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           <button onClick={() => toast('Export initiated — file will download shortly')} className="stock-btn-ghost">
             <Download size={15} /> Export
@@ -158,7 +173,7 @@ export default function StockManagementPage() {
       </div>
 
       <div className="stock-card">
-        <div className="stock-card-title">Daily Totals — {day}</div>
+        <div className="stock-card-title">Daily Totals — {selectedDate}</div>
         <div className="stock-scroll">
           <table className="stock-table">
             <thead>
