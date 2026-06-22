@@ -16,6 +16,7 @@ import useDeliveries from '../../hooks/useDeliveries/useDeliveries';
 import Pill from '../../components/ui/Pill/Pill';
 import Select from '../../components/ui/Select/Select';
 import Field from '../../components/ui/Field/Field';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import './InboundDeliveryPage.css';
 
 function ibdStatus(d) {
@@ -160,11 +161,10 @@ export default function InboundDeliveryPage() {
             />
           </Field>
           <Field label="Date">
-            <input 
-              type="date" 
-              value={df} 
-              onChange={(e) => setDf(e.target.value)}
-              style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'inherit', color: 'var(--ink)' }}
+            <CustomDatePicker
+              value={df}
+              onChange={(val) => setDf(val)}
+              placeholder="dd-mm-yyyy"
             />
           </Field>
           <button onClick={() => { setSf('All'); setQ(''); setDf(''); }} className="ibd-filter-clear">

@@ -70,8 +70,8 @@ export default function CustomDatePicker({ value, onChange, placeholder = "dd-mm
           display: "flex", justifyContent: "space-between", alignItems: "center", cursor: disabled ? "not-allowed" : "pointer"
         }}
       >
-        <span>{formatDate(value)}</span>
-        <Calendar size={15} color="#5B6470" style={{ flexShrink: 0 }} />
+        <span style={{ whiteSpace: "nowrap" }}>{formatDate(value)}</span>
+        <Calendar size={15} color="#5B6470" style={{ flexShrink: 0, marginLeft: 8 }} />
       </div>
 
       {open && (
