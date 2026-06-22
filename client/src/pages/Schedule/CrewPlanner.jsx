@@ -45,7 +45,7 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
   const[pop,setPop]=useState(null); // {person, dateKey}
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/schedule/crew/${plant}`)
+    fetch(`/api/schedule/crew/${plant}`)
       .then(res => res.json())
       .then(data => {
         if (data && data.status && Object.keys(data.status).length > 0) {
@@ -85,7 +85,7 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
         else next[plant][person][dk]={status,comment:comment||""};
       }
       
-      fetch(`http://localhost:5000/api/schedule/crew/${plant}`, {
+      fetch(`/api/schedule/crew/${plant}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: next[plant] })

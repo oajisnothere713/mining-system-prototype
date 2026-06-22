@@ -294,7 +294,7 @@ const DEFAULT_BOOKINGS = [
 
 let bookings = [];
 
-const API_URL = "http://localhost:5000/api/bookings";
+const API_URL = "/api/bookings";
 
 export async function fetchBookings() {
   try {
