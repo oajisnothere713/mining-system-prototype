@@ -18,6 +18,7 @@ import { fmt, unit } from '../../utils/formatters/formatters';
 import Pill from '../../components/ui/Pill/Pill';
 import TypeTag from '../../components/ui/TypeTag/TypeTag';
 import Banner from '../../components/ui/Banner/Banner';
+import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import './DeliveryDetailPage.css';
 
 function ibdStatus(d) {
@@ -137,12 +138,13 @@ export default function DeliveryDetailPage() {
       <div className="detail-subtitle">
         Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving
         {!done && !physical ? (
-          <input 
-            type="date" 
-            value={receiptDate}
-            onChange={(e) => setReceiptDate(e.target.value)}
-            style={{ marginLeft: 6, padding: '2px 6px', border: '1px solid var(--line)', borderRadius: 4, outline: 'none', fontFamily: 'inherit' }}
-          />
+          <div style={{ display: 'inline-block', width: '150px', marginLeft: 6, verticalAlign: 'middle' }}>
+            <CustomDatePicker
+              value={receiptDate}
+              onChange={(val) => setReceiptDate(val)}
+              placeholder="dd-mm-yyyy"
+            />
+          </div>
         ) : (
           ` ${delivery.date}`
         )}
