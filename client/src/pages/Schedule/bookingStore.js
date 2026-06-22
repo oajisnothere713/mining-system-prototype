@@ -52,21 +52,55 @@ export const VEHICLE_GROUPS_BY_PLANT = {
 /* Crew grouped by role, per plant */
 export const CREW_GROUPS_BY_PLANT = {
   "2025": [
-    { role: "BMD Operators",      hint: "Operate the bulk delivery trucks", members: ["Ramesh Patil", "Suresh Yadav", "Blair Huntingdon", "Cas Davide"] },
-    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew",        members: ["Mike Sullivan", "Dan Brooks"] },
-    { role: "Surveyors",          hint: "Bore tracking & mark-out",          members: ["James Lee", "Priya Sharma"] },
+    { role: "BMD Operators", hint: "Operate the bulk delivery trucks", members: [
+      { id: "EMP-2025-01", name: "Ramesh Patil" },
+      { id: "EMP-2025-02", name: "Suresh Yadav" },
+      { id: "EMP-2025-03", name: "Blair Huntingdon" },
+      { id: "EMP-2025-04", name: "Cas Davide" }
+    ]},
+    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew", members: [
+      { id: "EMP-2025-05", name: "Mike Sullivan" },
+      { id: "EMP-2025-06", name: "Dan Brooks" }
+    ]},
+    { role: "Surveyors", hint: "Bore tracking & mark-out", members: [
+      { id: "EMP-2025-07", name: "James Lee" },
+      { id: "EMP-2025-08", name: "Priya Sharma" }
+    ]},
   ],
   "2010": [
-    { role: "BMD Operators",         hint: "Operate the bulk delivery trucks", members: ["Arjun Mehta", "Vikram Singh"] },
-    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew",          members: ["Rahul Verma"] },
-    { role: "Surveyors",             hint: "Bore tracking & mark-out",         members: ["Neha Joshi"] },
+    { role: "BMD Operators", hint: "Operate the bulk delivery trucks", members: [
+      { id: "EMP-2010-01", name: "Arjun Mehta" },
+      { id: "EMP-2010-02", name: "Vikram Singh" }
+    ]},
+    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew", members: [
+      { id: "EMP-2010-03", name: "Rahul Verma" }
+    ]},
+    { role: "Surveyors", hint: "Bore tracking & mark-out", members: [
+      { id: "EMP-2010-04", name: "Neha Joshi" }
+    ]},
   ],
   "2040": [
-    { role: "BMD Operators",         hint: "Operate the bulk delivery trucks", members: ["Kiran Rao", "Manoj Gowda"] },
-    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew",          members: ["Sandeep Nair"] },
-    { role: "Surveyors",             hint: "Bore tracking & mark-out",         members: ["Anita Desai"] },
+    { role: "BMD Operators", hint: "Operate the bulk delivery trucks", members: [
+      { id: "EMP-2040-01", name: "Kiran Rao" },
+      { id: "EMP-2040-02", name: "Manoj Gowda" }
+    ]},
+    { role: "Blasters / Shotfirers", hint: "Statutory blasting crew", members: [
+      { id: "EMP-2040-03", name: "Sandeep Nair" }
+    ]},
+    { role: "Surveyors", hint: "Bore tracking & mark-out", members: [
+      { id: "EMP-2040-04", name: "Anita Desai" }
+    ]},
   ],
 };
+
+export const CREW_MAP = {};
+Object.values(CREW_GROUPS_BY_PLANT).forEach(plantGroups => {
+  plantGroups.forEach(group => {
+    group.members.forEach(m => {
+      CREW_MAP[m.id] = m;
+    });
+  });
+});
 
 /* Product catalogue, grouped by category (generic, non-Orica) */
 export const PRODUCT_CATS = [
@@ -150,13 +184,15 @@ const S = (id, qty) => {
   return { serviceId: id, name: s.name, qty, uom: s.uom };
 };
 
-let bookings = [
+const STORAGE_KEY = "mining_bookings_db";
+
+const DEFAULT_BOOKINGS = [
   { _id:"BL-2025-041", blastNumber:"BL-2025-041", plantCode:"2025", date:"2026-06-02", startTime:"04:30",
     bookingType:"single", endDate:null, recurrence:null,
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087201", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-041-01", status:"Submitted", vehicleId:"MH-12-BMD-01",
-        operatorIds:["Ramesh Patil","Suresh Yadav"], shotfirerIds:["Mike Sullivan"],
+        operatorIds:["EMP-2025-01","EMP-2025-02"], shotfirerIds:["EMP-2025-05"],
         products:[P("BULK-EMUL",22), P("IS-EDET",400)], services:[S("SVC-SETUP",1)], notes:"", signature:null },
     ], status:"Submitted" },
 
@@ -165,7 +201,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087202", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-042-01", status:"Submitted", vehicleId:"MH-12-BMD-02",
-        operatorIds:["Blair Huntingdon"], shotfirerIds:["Dan Brooks"],
+        operatorIds:["EMP-2025-03"], shotfirerIds:["EMP-2025-06"],
         products:[P("BULK-EMUL",18)], services:[], notes:"", signature:null },
     ], status:"Submitted" },
 
@@ -174,7 +210,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087205", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-043-01", status:"Delivered", vehicleId:"MH-12-BMD-01",
-        operatorIds:["Ramesh Patil"], shotfirerIds:["Mike Sullivan"],
+        operatorIds:["EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
         products:[P("BULK-ANFO",24), P("IS-EDET",300)], services:[], notes:"", signature:null },
     ], status:"Delivered" },
 
@@ -183,7 +219,7 @@ let bookings = [
     customerId:"6202", customerName:"Aggregate Resources Pvt Ltd", shipToSite:"Chittorgarh Quarry", customerPO:"4500087210", contractId:"C-ARP-23",
     deliveryDockets:[
       { docketNumber:"BL-2025-044-01", status:"Delivered", vehicleId:"MH-12-BMD-02",
-        operatorIds:["Cas Davide"], shotfirerIds:["Dan Brooks"],
+        operatorIds:["EMP-2025-04"], shotfirerIds:["EMP-2025-06"],
         products:[P("BULK-EMUL",15)], services:[], notes:"", signature:null },
     ], status:"Delivered" },
 
@@ -193,10 +229,10 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087215", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-045-01", status:"In Progress", vehicleId:"MH-12-BMD-01",
-        operatorIds:["Suresh Yadav","Ramesh Patil"], shotfirerIds:["Mike Sullivan"],
+        operatorIds:["EMP-2025-02","EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
         products:[P("BULK-EMUL",42), P("IS-CB400",400)], services:[S("SVC-BMDOP",2)], notes:"", signature:null },
       { docketNumber:"BL-2025-045-02", status:"Planned", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["Mike Sullivan","Dan Brooks"],
+        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
         products:[], services:[S("SVC-CLEAR",1)], notes:"Crew support truck", signature:null },
     ], status:"In Progress" },
 
@@ -205,7 +241,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Itauri-Jharkua Block", customerPO:"4500087216", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-046-01", status:"Planned", vehicleId:"MH-12-BMD-02",
-        operatorIds:["Blair Huntingdon"], shotfirerIds:["Dan Brooks"],
+        operatorIds:["EMP-2025-03"], shotfirerIds:["EMP-2025-06"],
         products:[P("BULK-ANFO",18)], services:[], notes:"", signature:null },
     ], status:"Planned" },
 
@@ -214,7 +250,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087220", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-047-01", status:"Planned", vehicleId:"MH-12-BMD-01",
-        operatorIds:["Ramesh Patil"], shotfirerIds:["Mike Sullivan"],
+        operatorIds:["EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
         products:[P("BULK-EMUL",22), P("IS-EDET",400)], services:[], notes:"", signature:null },
     ], status:"Planned" },
 
@@ -223,7 +259,7 @@ let bookings = [
     customerId:"6202", customerName:"Aggregate Resources Pvt Ltd", shipToSite:"Kadapa Block-3", customerPO:"4500087221", contractId:"C-ARP-23",
     deliveryDockets:[
       { docketNumber:"BL-2025-048-01", status:"Planned", vehicleId:"MH-12-BMD-02",
-        operatorIds:["Cas Davide"], shotfirerIds:["Dan Brooks"],
+        operatorIds:["EMP-2025-04"], shotfirerIds:["EMP-2025-06"],
         products:[P("BULK-EMUL",12)], services:[], notes:"", signature:null },
     ], status:"Planned" },
 
@@ -233,7 +269,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087230", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-049-01", status:"In Progress", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["Mike Sullivan","Dan Brooks"],
+        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
         products:[], services:[S("SVC-CLEAR",1)], notes:"", signature:null },
     ], status:"In Progress" },
 
@@ -242,7 +278,7 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087230", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-049b-01", status:"Planned", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["Mike Sullivan","Dan Brooks"],
+        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
         products:[], services:[S("SVC-CLEAR",1)], notes:"", signature:null },
     ], status:"Planned" },
 
@@ -251,29 +287,58 @@ let bookings = [
     customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087235", contractId:"C-JKC-24",
     deliveryDockets:[
       { docketNumber:"BL-2025-052-01", status:"Planned", vehicleId:"MH-12-SVY-01",
-        operatorIds:["James Lee"], shotfirerIds:[],
+        operatorIds:["EMP-2025-07"], shotfirerIds:[],
         products:[], services:[S("SVC-MARK",1)], notes:"", signature:null },
     ], status:"Planned" },
 ];
 
-/* ---------- READ (mirror Mongo find) ---------- */
+let bookings = [];
+
+const API_URL = "http://localhost:5000/api/bookings";
+
+export async function fetchBookings() {
+  try {
+    const res = await fetch(API_URL);
+    const json = await res.json();
+    if (json.success) {
+      bookings = json.data || [];
+    }
+  } catch (err) {
+    console.error("Network error fetching bookings:", err);
+    bookings = [];
+  }
+}
+
+/* ---------- READ ---------- */
 export const getBookings = () => bookings;
 export const getBookingsByPlant = (plantCode) => bookings.filter(b => b.plantCode === plantCode);
 export const getBookingById = (id) => bookings.find(b => b._id === id) || null;
 
-/* ---------- WRITE (mirror Mongo insertOne / updateOne) ---------- */
+/* ---------- WRITE (Optimistic + API sync) ---------- */
 export function addBooking(doc) {
   bookings = [...bookings, doc];
+  fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
   return doc;
 }
 export function updateBooking(id, changes) {
   bookings = bookings.map(b => b._id === id ? { ...b, ...changes, updatedAt: new Date().toISOString() } : b);
+  fetch(`${API_URL}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) }).catch(console.error);
   return getBookingById(id);
 }
 export function replaceBooking(doc) {
   const exists = bookings.some(b => b._id === doc._id);
   bookings = exists ? bookings.map(b => b._id === doc._id ? doc : b) : [...bookings, doc];
+  
+  if (exists) {
+    fetch(`${API_URL}/${doc._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
+  } else {
+    fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) }).catch(console.error);
+  }
   return doc;
+}
+export function deleteBooking(id) {
+  bookings = bookings.filter(b => b._id !== id);
+  fetch(`${API_URL}/${id}`, { method: "DELETE" }).catch(console.error);
 }
 
 /* ---------- NEXT BLAST NUMBER (unique) ---------- */
@@ -296,9 +361,10 @@ function blastCoversDate(b, dateKey) {
 export function vehicleAssignments(vehicleId, dateKey, excludeBlast = null) {
   const out = [];
   bookings.forEach(b => {
+    if (b.status === "Cancelled") return;
     if (excludeBlast && b._id === excludeBlast) return;
     if (!blastCoversDate(b, dateKey)) return;
-    b.deliveryDockets.forEach(dk => { if (dk.vehicleId === vehicleId) out.push(b.blastNumber); });
+    (b.deliveryDockets || []).forEach(dk => { if (dk.vehicleId === vehicleId) out.push(b.blastNumber); });
   });
   return out;
 }
@@ -306,9 +372,10 @@ export function vehicleAssignments(vehicleId, dateKey, excludeBlast = null) {
 export function personAssignments(person, dateKey, excludeBlast = null) {
   const out = [];
   bookings.forEach(b => {
+    if (b.status === "Cancelled") return;
     if (excludeBlast && b._id === excludeBlast) return;
     if (!blastCoversDate(b, dateKey)) return;
-    b.deliveryDockets.forEach(dk => {
+    (b.deliveryDockets || []).forEach(dk => {
       if ([...(dk.operatorIds || []), ...(dk.shotfirerIds || [])].includes(person)) out.push(b.blastNumber);
     });
   });

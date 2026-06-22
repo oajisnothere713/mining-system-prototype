@@ -14,6 +14,7 @@ const deliveryRoutes = require('./routes/deliveryRoutes/deliveryRoutes');
 const stockRoutes = require('./routes/stockRoutes/stockRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes/scheduleRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -32,6 +33,7 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/stock', stockRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

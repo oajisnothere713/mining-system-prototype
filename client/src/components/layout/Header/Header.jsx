@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, ChevronDown, Factory, AlertTriangle, ClipboardCheck } from 'lucide-react';
 import { usePlant } from '../../../context/PlantContext/PlantContext';
+import CustomSelect from '../../ui/CustomSelect';
 import './Header.css';
 
 export default function Header() {
@@ -27,22 +28,16 @@ export default function Header() {
       <div className="header-left">
         <Factory size={16} style={{ color: 'var(--slate)' }} />
         <span className="header-plant-label">Plant</span>
-        <div className="header-plant-select-wrapper">
-          <select
-            className="header-plant-select"
+        <div className="header-plant-select-wrapper" style={{ width: 170 }}>
+          <CustomSelect
             value={selectedPlant.code}
-            onChange={(e) => {
-              const p = plants.find((p) => p.code === e.target.value);
+            onChange={(val) => {
+              const p = plants.find((p) => p.code === val);
               if (p) setSelectedPlant(p);
             }}
-          >
-            {plants.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.code} — {p.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={15} className="header-plant-chevron" />
+            options={plants.map(p => ({ value: p.code, label: `${p.code} — ${p.name}` }))}
+            style={{ border: 'none', padding: 0 }}
+          />
         </div>
       </div>
       <div className="header-right">
