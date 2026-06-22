@@ -3,6 +3,8 @@ import './SchedulePage.css';
 import CrewPlanner from './CrewPlanner';
 import FleetPlanner from './FleetPlanner';
 import BookingForm from './BookingForm';
+import { usePlant } from '../../context/PlantContext/PlantContext';
+import { fetchBookings, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -11,36 +13,15 @@ const STATUS = {
   Planned: { fg: BL, bg: BLS, dot: BL },
   "In Progress": { fg: "#9C6B00", bg: AMS, dot: AM },
   Delivered: { fg: GR, bg: GRS, dot: GR },
-  Submitted: { fg: SL, bg: SLS, dot: SL }
+  Submitted: { fg: SL, bg: SLS, dot: SL },
+  Cancelled: { fg: RD, bg: RDS, dot: RD }
 };
 
 const ORDER = ["Planned", "In Progress", "Delivered", "Submitted"];
 
-const VGROUPS = [
-  { type: "BMD Trucks", hint: "Bulk Mixing & Delivery", icon: "ti-truck-loading", lanes: [{ id: "MH-12-BMD-01", s: "active" }, { id: "MH-12-BMD-02", s: "active" }, { id: "MH-12-BMD-03", s: "maintenance" }] },
-  { type: "Blast Crew Vehicles", hint: "Carries blaster / shotfirer crew", icon: "ti-truck", lanes: [{ id: "MH-12-BCV-01", s: "active" }, { id: "MH-12-BCV-02", s: "active" }] },
-  { type: "Support Trucks", hint: "Survey, mark-out & ancillary support", icon: "ti-car-crane", lanes: [{ id: "MH-12-SVY-01", s: "active" }, { id: "MH-12-SPT-01", s: "active" }] }
-];
 
-const CGROUPS = [
-  { type: "BMD Operators", hint: "Operate the bulk delivery trucks", icon: "ti-user", lanes: [{ id: "Ramesh Patil" }, { id: "Suresh Yadav" }, { id: "Blair Huntingdon" }, { id: "Cas Davide" }] },
-  { type: "Blasters / Shotfirers", hint: "Licensed to charge & fire", icon: "ti-user", lanes: [{ id: "Mike Sullivan" }, { id: "Dan Brooks" }] },
-  { type: "Surveyors", hint: "Survey & mark-out", icon: "ti-user", lanes: [{ id: "James Lee" }] }
-];
 
-const B = [
-  { id: "BL-2025-041", date: "2026-06-02", time: "04:30", vehicle: "MH-12-BMD-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087201", operators: ["Ramesh Patil", "Suresh Yadav"], crew: ["Mike Sullivan"], products: [["ANE", 22, "t"], ["Detonator 1.5m", 400, "ea"]], services: [["Site Service & Setup", 1, "ea"]], status: "Submitted" },
-  { id: "BL-2025-042", date: "2026-06-02", time: "08:00", vehicle: "MH-12-BMD-02", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit B", po: "4500087202", operators: ["Blair Huntingdon"], crew: ["Dan Brooks"], products: [["Bulk Emulsion", 18, "t"]], services: [], status: "Submitted" },
-  { id: "BL-2025-043", date: "2026-06-03", time: "04:30", vehicle: "MH-12-BMD-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087205", operators: ["Ramesh Patil"], crew: ["Mike Sullivan"], products: [["AN", 24, "t"], ["Detonator 1.5m", 300, "ea"]], services: [], status: "Delivered" },
-  { id: "BL-2025-044", date: "2026-06-03", time: "07:00", vehicle: "MH-12-BMD-02", customer: "Aggregate Resources", customerFull: "Aggregate Resources Pvt Ltd", site: "Chittorgarh Quarry", po: "4500087210", operators: ["Cas Davide"], crew: ["Dan Brooks"], products: [["ANE", 15, "t"]], services: [], status: "Delivered" },
-  { id: "BL-2025-045", date: "2026-06-04", time: "04:30", vehicle: "MH-12-BMD-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087215", operators: ["Suresh Yadav", "Ramesh Patil"], crew: ["Mike Sullivan"], products: [["ANE", 42, "t"], ["Booster 400g", 400, "ea"]], services: [["MMU Operation", 2, "ea"]], status: "In Progress", multiDay: { from: "2026-06-04", to: "2026-06-05" } },
-  { id: "BL-2025-047", date: "2026-06-05", time: "11:00", vehicle: "MH-12-BMD-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit B", po: "4500087220", operators: ["Ramesh Patil"], crew: ["Mike Sullivan"], products: [["ANE", 22, "t"], ["Detonator 1.5m", 400, "ea"]], services: [], status: "Planned" },
-  { id: "BL-2025-046", date: "2026-06-04", time: "06:00", vehicle: "MH-12-BMD-02", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Itauri-Jharkua Block", po: "4500087216", operators: ["Blair Huntingdon"], crew: ["Dan Brooks"], products: [["AN", 18, "t"]], services: [], status: "Planned" },
-  { id: "BL-2025-048", date: "2026-06-05", time: "08:00", vehicle: "MH-12-BMD-02", customer: "Aggregate Resources", customerFull: "Aggregate Resources Pvt Ltd", site: "Kadapa Block-3", po: "4500087221", operators: ["Cas Davide"], crew: ["Dan Brooks"], products: [["Bulk Emulsion", 12, "t"]], services: [], status: "Planned" },
-  { id: "BL-2025-049", date: "2026-06-04", time: "05:00", vehicle: "MH-12-BCV-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087230", operators: [], crew: ["Mike Sullivan", "Dan Brooks"], products: [], services: [["Blast Clearance", 1, "ea"]], status: "In Progress", recurrence: "Daily" },
-  { id: "BL-2025-049b", date: "2026-06-05", time: "05:00", vehicle: "MH-12-BCV-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit A", po: "4500087230", operators: [], crew: ["Mike Sullivan", "Dan Brooks"], products: [], services: [["Blast Clearance", 1, "ea"]], status: "Planned", recurrence: "Daily" },
-  { id: "BL-2025-052", date: "2026-06-04", time: "04:00", vehicle: "MH-12-SVY-01", customer: "JK Cement", customerFull: "JK Cement Works — Central", site: "Panna Pit B", po: "4500087235", operators: ["James Lee"], crew: [], products: [], services: [["Mark Out", 1, "ea"]], status: "Planned" }
-];
+// B array will now be computed dynamically.
 
 function initStr(n) { return n.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(); }
 function people(b) { return [].concat(b.operators || [], b.crew || []); }
@@ -138,6 +119,77 @@ export default function SchedulePage() {
   const [activePanel, setActivePanel] = useState(null);
   const [baseDate, setBaseDate] = useState(new Date());
   const [showWeekPicker, setShowWeekPicker] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const { selectedPlant } = usePlant();
+  const plantCode = selectedPlant?.code || "2025";
+  const plantName = selectedPlant?.name || "Panna";
+  const plantRegion = selectedPlant?.region || "Madhya Pradesh";
+
+  const VGROUPS = React.useMemo(() => {
+    return (VEHICLE_GROUPS_BY_PLANT[plantCode] || []).map(g => ({
+      type: g.type,
+      hint: g.hint,
+      icon: g.type.includes("Crew") ? "ti-truck" : g.type.includes("Support") ? "ti-car-crane" : "ti-truck-loading",
+      img: g.type.includes("Crew") ? "/images/crew_vehicle.png" : g.type.includes("Support") ? "/images/support_truck.png" : "/images/bmd_truck.png",
+      lanes: (g.ids || []).map(id => ({ id, s: "active" }))
+    }));
+  }, [plantCode]);
+
+  const CGROUPS = React.useMemo(() => {
+    return (CREW_GROUPS_BY_PLANT[plantCode] || []).map(g => ({
+      type: g.role,
+      hint: g.hint,
+      icon: "ti-user",
+      lanes: g.members.map(m => ({ id: m.id, name: m.name }))
+    }));
+  }, [plantCode]);
+
+  React.useEffect(() => {
+    fetchBookings().then(() => {
+      setRefreshKey(k=>k+1);
+      setLoading(false);
+    });
+  }, []);
+
+
+
+  const B = React.useMemo(() => {
+    const raw = getBookings().filter(b => b.plantCode === plantCode);
+    const flattened = [];
+    raw.forEach(b => {
+      (b.deliveryDockets || []).forEach(dk => {
+        const cParts = (b.customerName || b.customerId || "").split(" ");
+        flattened.push({
+          id: b.blastNumber,
+          date: b.date,
+          time: b.startTime,
+          vehicle: dk.vehicleId,
+          customer: cParts.length > 1 ? cParts[0] + " " + cParts[1] : cParts[0],
+          customerFull: b.customerName || b.customerId,
+          site: b.shipToSite,
+          po: b.customerPO,
+          operators: dk.operatorIds || [],
+          crew: dk.shotfirerIds || [],
+          products: (dk.products || []).filter(p=>p.materialId).map(p => {
+             const m = PRODUCT_MAP[p.materialId];
+             return [m ? m.name : p.materialId, p.plannedQty || p.qty, m ? m.uom : ""];
+          }),
+          services: (dk.services || []).filter(s=>s.serviceId).map(s => {
+             const m = SERVICE_MAP[s.serviceId];
+             return [m ? m.name : s.serviceId, s.qty, m ? m.uom : ""];
+          }),
+          notes: dk.notes || "",
+          status: b.status || dk.status || "Planned",
+          multiDay: b.bookingType === "multi" ? { from: b.date, to: b.endDate } : null,
+          recurrence: b.bookingType === "recurring" ? (b.recurrence?.frequency || b.recFreq) : null
+        });
+      });
+    });
+    return flattened;
+  }, [refreshKey, plantCode]);
 
   const fullWeek = React.useMemo(() => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -173,7 +225,12 @@ export default function SchedulePage() {
       single[b.date].push(b);
     });
     Object.values(single).forEach(l => l.sort((a, z) => a.time.localeCompare(z.time)));
-    const multis = mine.filter(b => b.multiDay && (dayIndex(b.multiDay.from) >= 0 || dayIndex(b.multiDay.to) >= 0));
+    const multis = mine.filter(b => {
+      if (!b.multiDay) return false;
+      const wkStart = activeWeek[0].k;
+      const wkEnd = activeWeek[activeWeek.length - 1].k;
+      return b.multiDay.from <= wkEnd && b.multiDay.to >= wkStart;
+    });
     return { single, multis };
   };
 
@@ -182,7 +239,11 @@ export default function SchedulePage() {
     return B.filter(b => {
       const belongs = mode === "fleet" ? ids.indexOf(b.vehicle) >= 0 : people(b).some(p => ids.indexOf(p) >= 0);
       if (!belongs) return false;
-      if (b.multiDay) return dayIndex(b.multiDay.from) >= 0 || dayIndex(b.multiDay.to) >= 0;
+      if (b.multiDay) {
+        const wkStart = activeWeek[0].k;
+        const wkEnd = activeWeek[activeWeek.length - 1].k;
+        return b.multiDay.from <= wkEnd && b.multiDay.to >= wkStart;
+      }
       return dayIndex(b.date) >= 0;
     }).length;
   };
@@ -191,6 +252,16 @@ export default function SchedulePage() {
   const Card = ({ b, spanning }) => {
     const s = STATUS[b.status];
     const pp = people(b);
+    let hasClash = false;
+    if (["Planned", "In Progress"].includes(b.status)) {
+       const d = new Date(b.date);
+       const e = b.multiDay ? new Date(b.multiDay.to) : new Date(b.date);
+       for (let curr = new Date(d); curr <= e; curr.setDate(curr.getDate() + 1)) {
+         const k = `${curr.getFullYear()}-${String(curr.getMonth()+1).padStart(2,'0')}-${String(curr.getDate()).padStart(2,'0')}`;
+         if (b.vehicle && isVehicleConflicted(b.vehicle, k)) { hasClash = true; break; }
+         if (pp.some(p => isPersonConflicted(p, k))) { hasClash = true; break; }
+       }
+    }
     return (
       <div 
         className="bk-card"
@@ -228,8 +299,15 @@ export default function SchedulePage() {
           <i className="ti ti-map-pin" style={{ fontSize: 10 }}></i>{b.site}
         </div>
         
-        <div style={{ fontSize: 10.5, color: O, fontWeight: 700, marginBottom: 6 }}>
-          {b.id}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <div style={{ fontSize: 10.5, color: O, fontWeight: 700 }}>
+            {b.id}
+          </div>
+          {hasClash && (
+            <div title="Double-booked — vehicle or operator clashes with another blast on this date" style={{ fontSize: 9.5, fontWeight: 700, color: '#9C6B00', background: '#FFF9DB', border: '1px solid #F08C00', borderRadius: 4, padding: '1px 5px', display: 'flex', alignItems: 'center', gap: 3, cursor: 'help' }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 10 }}></i> Clash
+            </div>
+          )}
         </div>
         
         {shortProd(b) && (
@@ -264,7 +342,7 @@ export default function SchedulePage() {
   // ─── PANEL COMPONENT ──────────────────────────
   const Panel = ({ b, onClose }) => {
     if (!b) return null;
-    const s = STATUS[b.status];
+    const s = STATUS[b.status] || STATUS["Planned"];
     const ci = ORDER.indexOf(b.status);
     const pl = [...(b.operators || []).map(p => ({ n: p, r: "BMD Operator" })), ...(b.crew || []).map(p => ({ n: p, r: "Blaster / Shotfirer" }))];
 
@@ -350,6 +428,13 @@ export default function SchedulePage() {
               )}
             </div>
 
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11.5, color: SL, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Docket Notes</div>
+              <div style={{ fontSize: 13, color: INK, padding: '7px 0', lineHeight: 1.5 }}>
+                {b.notes ? b.notes : "—"}
+              </div>
+            </div>
+
             {((b.products && b.products.length > 0) || (b.services && b.services.length > 0)) && (
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
                 <thead>
@@ -378,18 +463,39 @@ export default function SchedulePage() {
             )}
           </div>
           
-          <div style={{ padding: '16px 22px', borderTop: `1px solid ${LN}`, flexShrink: 0, display: 'flex', gap: 10 }}>
+          <div style={{ padding: '16px 22px', borderTop: `1px solid ${LN}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {b.status === "Planned" && (
-              <><button style={gb}><i className="ti ti-pencil"></i> Edit</button><button style={{ ...sb, background: O, flex: 1 }}><i className="ti ti-send"></i> Submit Delivery</button></>
+              <>
+                <button onClick={() => { updateBooking(b.id, { status: "In Progress" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "In Progress"}); }} style={{ ...sb, background: O, width: '100%' }}><i className="ti ti-send"></i> Submit Delivery</button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, flex: 1, padding: '11px 0' }}><i className="ti ti-pencil"></i> Edit Booking</button>
+                  <button onClick={() => { updateBooking(b.id, { status: "Cancelled" }); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, flex: 1, color: '#9C6B00', borderColor: '#F08C00', padding: '11px 0' }}><i className="ti ti-ban"></i> Cancel Booking</button>
+                </div>
+                <button onClick={() => { deleteBooking(b.id); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#E03131', borderColor: '#E03131' }}><i className="ti ti-trash"></i> Delete Booking</button>
+              </>
             )}
             {b.status === "In Progress" && (
-              <button style={{ ...sb, background: AM, flex: 1 }}><i className="ti ti-file-text"></i> View Mobile Docket</button>
+              <>
+                <button onClick={() => { updateBooking(b.id, { status: "Delivered" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Delivered"}); }} style={{ ...sb, background: AM, width: '100%' }}><i className="ti ti-check"></i> Mark as Delivered</button>
+                <button onClick={() => { updateBooking(b.id, { status: "Cancelled" }); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#9C6B00', borderColor: '#F08C00' }}><i className="ti ti-ban"></i> Cancel Booking</button>
+              </>
             )}
             {b.status === "Delivered" && (
-              <><button style={gb}><i className="ti ti-file-text"></i> View Docket</button><button style={{ ...sb, background: GR, flex: 1 }}><i className="ti ti-send"></i> Submit to ERP</button></>
+              <>
+                <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                  <button style={{...gb, flex: 1}}><i className="ti ti-file-text"></i> View Docket</button>
+                  <button onClick={() => { updateBooking(b.id, { status: "Submitted" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Submitted"}); }} style={{ ...sb, background: GR, flex: 1 }}><i className="ti ti-send"></i> Submit to ERP</button>
+                </div>
+              </>
             )}
             {b.status === "Submitted" && (
-              <button style={{ ...gb, flex: 1 }}><i className="ti ti-file-text"></i> View Docket (read-only)</button>
+              <button style={{ ...gb, width: '100%' }}><i className="ti ti-file-text"></i> View Docket (read-only)</button>
+            )}
+            {b.status === "Cancelled" && (
+              <>
+                <button onClick={() => { updateBooking(b.id, { status: "Planned" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Planned"}); }} style={{ ...gb, width: '100%', color: BL, borderColor: BL }}><i className="ti ti-refresh"></i> Reactivate Booking</button>
+                <button onClick={() => { deleteBooking(b.id); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#E03131', borderColor: '#E03131' }}><i className="ti ti-trash"></i> Delete Permanently</button>
+              </>
             )}
           </div>
         </div>
@@ -400,12 +506,31 @@ export default function SchedulePage() {
   // ─── MAIN RENDER ──────────────────────────────
   const cols = `repeat(${activeWeek.length}, 1fr)`;
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F8F9FA' }}>
+        <i className="ti ti-loader-2" style={{ fontSize: 32, color: O, animation: 'spin 1s linear infinite' }}></i>
+        <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+        <div style={{ marginTop: 16, fontSize: 14, fontWeight: 600, color: '#495057' }}>Loading Schedule Data...</div>
+      </div>
+    );
+  }
+
   if (showBookingForm) {
-    return <BookingForm onClose={() => setShowBookingForm(false)} onSaved={(doc) => {
-      // For now, we just close the form. When we update the rest of the architecture, we'll sync the data.
-      console.log('Saved booking:', doc);
-      setShowBookingForm(false);
-    }} />;
+    return <BookingForm 
+      plant={{code: plantCode, name: plantName, region: plantRegion}} 
+      editBlastId={editingBookingId}  
+      expandDocket={editingBookingId ? 0 : null}
+      onClose={() => {
+        setEditingBookingId(null);
+        setShowBookingForm(false);
+      }} 
+      onSaved={(doc) => {
+        setRefreshKey(k => k + 1);
+        setEditingBookingId(null);
+        setShowBookingForm(false);
+      }} 
+    />;
   }
 
   return (
@@ -413,7 +538,7 @@ export default function SchedulePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>Blast Scheduling Board</div>
-          <div style={{ fontSize: 14, color: SL, marginTop: 5 }}>Panna (2025) · Madhya Pradesh</div>
+          <div style={{ fontSize: 14, color: SL, marginTop: 5 }}>{plantName} ({plantCode}) · {plantRegion}</div>
         </div>
         <button onClick={() => setShowBookingForm(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 18px', background: O, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
           <i className="ti ti-plus" style={{ fontSize: 16 }}></i>New Booking
@@ -483,10 +608,17 @@ export default function SchedulePage() {
             <div style={{ minWidth: workingWeek ? 820 : 980 }}>
               <div style={{ display: 'grid', gridTemplateColumns: `200px ${cols}`, borderBottom: `2px solid #D6DBE2` }}>
                 <div style={{ padding: '10px 16px', background: COLHEAD, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRight: `3px solid ${LN}` }}>
-                  <i className={`ti ${mode === "fleet" ? "ti-truck" : "ti-users"}`} style={{ fontSize: 16, color: O }}></i>
+                  {mode === "fleet" ? (
+                    <img src="/images/bmd_truck.png" style={{ height: 18, width: 28, objectFit: 'contain' }} alt="Fleet" />
+                  ) : (
+                    <i className="ti ti-users" style={{ fontSize: 16, color: O }}></i>
+                  )}
                   <div style={{ display: 'flex', background: '#fff', border: `1px solid #D6DBE2`, borderRadius: 9, padding: 3, textTransform: 'none', letterSpacing: 0 }}>
                     <button onClick={() => { setMode("fleet"); setCollapsed({}); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: mode === "fleet" ? O : 'transparent', color: mode === "fleet" ? '#fff' : SL }}>
-                      <i className="ti ti-truck" style={{ fontSize: 13 }}></i> Fleet
+                      <div style={{ background: mode === "fleet" ? '#fff' : 'transparent', borderRadius: 4, padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src="/images/bmd_truck.png" style={{ height: 12, width: 18, objectFit: 'contain', filter: mode === "fleet" ? 'none' : 'grayscale(100%) opacity(0.6)' }} alt="Fleet" />
+                      </div>
+                      Fleet
                     </button>
                     <button onClick={() => { setMode("crew"); setCollapsed({}); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: mode === "crew" ? O : 'transparent', color: mode === "crew" ? '#fff' : SL }}>
                       <i className="ti ti-users" style={{ fontSize: 13 }}></i> Crew
@@ -507,7 +639,11 @@ export default function SchedulePage() {
                   <React.Fragment key={g.type}>
                     <div onClick={() => toggleGroup(g.type)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', background: '#2B2F36', cursor: 'pointer', borderLeft: `4px solid ${O}`, borderBottom: `1px solid ${LN}` }}>
                       <i className={`ti ti-chevron-${ic ? "right" : "down"}`} style={{ fontSize: 16, color: '#A8AEB8' }}></i>
-                      <i className={`ti ${g.icon}`} style={{ fontSize: 17, color: O }}></i>
+                      {mode === "fleet" && g.img ? (
+                        <img src={g.img} style={{ height: 18, width: 28, objectFit: 'contain' }} alt={g.type} />
+                      ) : (
+                        <i className={`ti ${g.icon}`} style={{ fontSize: 17, color: O }}></i>
+                      )}
                       <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>{g.type}</span>
                       <span style={{ fontSize: 11.5, color: '#A8AEB8' }}>{g.hint}</span>
                       <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,.15)', padding: '2px 10px', borderRadius: 100 }}>
@@ -521,11 +657,15 @@ export default function SchedulePage() {
                       return (
                         <div key={lane.id} style={{ display: 'grid', gridTemplateColumns: `200px ${cols}`, borderBottom: `1px solid ${LN}`, minHeight: 78 }}>
                           <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 11, borderRight: `3px solid ${LN}`, background: FLEETCOL }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 9, background: lane.s === "maintenance" ? RDS : OS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <i className={`ti ${icon}`} style={{ fontSize: 19, color: lane.s === "maintenance" ? RD : O }}></i>
+                            <div style={{ width: 36, height: 36, borderRadius: 9, background: lane.s === "maintenance" ? RDS : OS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: `1px solid ${lane.s === "maintenance" ? RD : O}44` }}>
+                              {mode === "fleet" && g.img ? (
+                                <img src={g.img} style={{ width: "90%", height: "90%", objectFit: "contain", opacity: lane.s === "maintenance" ? 0.6 : 1 }} alt={g.type} />
+                              ) : (
+                                <i className={`ti ${icon}`} style={{ fontSize: 19, color: lane.s === "maintenance" ? RD : O }}></i>
+                              )}
                             </div>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: 13.5, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{lane.id}</div>
+                              <div style={{ fontSize: 13.5, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{lane.name || lane.id}</div>
                               {mode === "fleet" ? (
                                 lane.s === "maintenance" ? (
                                   <span style={{ fontSize: 10.5, color: RD, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><i className="ti ti-tool" style={{ fontSize: 11 }}></i>Maintenance</span>
@@ -538,36 +678,51 @@ export default function SchedulePage() {
                             </div>
                           </div>
 
-                          <div style={{ gridColumn: `2 / span ${activeWeek.length}`, display: 'grid', gridTemplateColumns: cols }}>
-                            {lb.multis.length > 0 && (
-                              <div style={{ gridColumn: `1 / span ${activeWeek.length}`, display: 'grid', gridTemplateColumns: cols, padding: '7px 0 0' }}>
-                                {lb.multis.map((m, i) => {
-                                  const f = Math.max(0, dayIndex(m.multiDay.from));
-                                  const tr = dayIndex(m.multiDay.to);
-                                  const t = tr < 0 ? activeWeek.length - 1 : tr;
+                          <div style={{ gridColumn: `2 / span ${activeWeek.length}`, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                            {/* Background Grid for vertical lines and lane status */}
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: cols, pointerEvents: 'none' }}>
+                              {activeWeek.map(d => {
+                                const maint = lane.s === "maintenance" && ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].includes(d.k);
+                                return (
+                                  <div key={d.k} style={{ borderLeft: `1px solid ${LN}`, background: maint ? "repeating-linear-gradient(45deg,#FFF5F5,#FFF5F5 6px,#fff 6px,#fff 12px)" : (d.today ? "#FFFBF7" : "transparent") }} />
+                                );
+                              })}
+                            </div>
+
+                            {/* Foreground Content */}
+                            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                              {lb.multis.length > 0 && (
+                                <div style={{ display: 'grid', gridTemplateColumns: cols, padding: '7px 0 0' }}>
+                                  {lb.multis.map((m, i) => {
+                                    const f = Math.max(0, dayIndex(m.multiDay.from));
+                                    const tr = dayIndex(m.multiDay.to);
+                                    const t = tr < 0 ? activeWeek.length - 1 : tr;
+                                    return (
+                                      <div key={i} style={{ gridColumn: `${f + 1} / span ${t - f + 1}`, padding: '0 7px' }}>
+                                        <Card b={m} spanning={true} />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              <div style={{ display: 'grid', gridTemplateColumns: cols, flexGrow: 1 }}>
+                                {activeWeek.map(d => {
+                                  const cell = lb.single[d.k] || [];
+                                  const maint = lane.s === "maintenance" && ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].includes(d.k);
                                   return (
-                                    <div key={i} style={{ gridColumn: `${f + 1} / span ${t - f + 1}`, padding: '0 7px' }}>
-                                      <Card b={m} spanning={true} />
+                                    <div key={d.k} style={{ padding: (cell.length > 0 || maint) ? 7 : '0 7px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      {maint ? (
+                                        <div style={{ fontSize: 10, color: RD, fontWeight: 600, textAlign: 'center', paddingTop: lb.multis.length > 0 ? 0 : 24 }}>
+                                          {lb.multis.length > 0 ? "" : "Out of service"}
+                                        </div>
+                                      ) : (
+                                        cell.map(b => <Card key={b.id} b={b} spanning={false} />)
+                                      )}
                                     </div>
                                   );
                                 })}
                               </div>
-                            )}
-
-                            <div style={{ gridColumn: `1 / span ${activeWeek.length}`, display: 'grid', gridTemplateColumns: cols }}>
-                              {activeWeek.map(d => {
-                                const cell = lb.single[d.k] || [];
-                                const maint = lane.s === "maintenance" && ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].includes(d.k);
-                                return (
-                                  <div key={d.k} style={{ padding: 7, borderLeft: `1px solid ${LN}`, minHeight: 78, display: 'flex', flexDirection: 'column', gap: 6, background: maint ? "repeating-linear-gradient(45deg,#FFF5F5,#FFF5F5 6px,#fff 6px,#fff 12px)" : (d.today ? "#FFFBF7" : "transparent") }}>
-                                    {maint ? (
-                                      <div style={{ fontSize: 10, color: RD, fontWeight: 600, textAlign: 'center', paddingTop: 24 }}>Out of service</div>
-                                    ) : (
-                                      cell.map(b => <Card key={b.id} b={b} spanning={false} />)
-                                    )}
-                                  </div>
-                                );
-                              })}
                             </div>
                           </div>
                         </div>
@@ -580,9 +735,9 @@ export default function SchedulePage() {
           </div>
         </div>
       ) : tab === "Staff Availability" ? (
-        <CrewPlanner plant="2025" workingWeek={workingWeek} fullWeek={fullWeek} />
+        <CrewPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} />
       ) : tab === "Vehicle Availability" ? (
-        <FleetPlanner plant="2025" workingWeek={workingWeek} fullWeek={fullWeek} />
+        <FleetPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} />
       ) : null}
 
       {activePanel && <Panel b={activePanel} onClose={() => setActivePanel(null)} />}

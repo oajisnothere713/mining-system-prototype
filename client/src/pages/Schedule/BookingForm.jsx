@@ -1,70 +1,40 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import "./BookingForm.css";
 import {
-  ArrowLeft, CalendarRange, Building2, ClipboardList, Plus, Trash2, X,
-  Check, AlertTriangle, Info, Repeat, ChevronDown, ChevronRight
-} from "lucide-react";
-import {
-  PLANTS, CUSTOMERS, VEHICLE_GROUPS_BY_PLANT, CREW_GROUPS_BY_PLANT,
+  CUSTOMERS, VEHICLE_GROUPS_BY_PLANT, CREW_GROUPS_BY_PLANT,
   PRODUCT_CATS, PRODUCT_MAP, SERVICES, SERVICE_MAP,
   getBookingById, addBooking, replaceBooking, nextBlastNumber,
   vehicleAssignments, personAssignments,
 } from "./bookingStore";
 
-/* ============================================================
-   BookingForm.jsx — full-page Create / Edit Booking
-   Blast -> one or more Delivery Dockets (vehicle + operators
-   + shotfirers + products + services + notes).
-   Reads master data + conflict helpers from bookingStore.
-   Props:
-     plant       : {code,name,region}  (from app shell)
-     editBlastId : string | null       (null = create mode)
-     expandDocket: number | null       (docket index to expand in edit)
-     onClose()   : return to board without saving
-     onSaved(doc): called after save (board refreshes)
-   ============================================================ */
+const ON_LEAVE = { "EMP-2025-04": ["2026-06-05"] }; // Cas Davide
+const onLeave = (id, d) => (ON_LEAVE[id] || []).includes(d);
 
-const ORANGE="#E8590C",ORANGE_SOFT="#FFF1E8",ORANGE_LINE="#F6C9AC";
-const INK="#1A1D21",SLATE="#5B6470",LINE="#E6E9ED",BG="#F7F8FA";
-const GREEN="#2F9E44",AMBER="#F08C00",AMBER_SOFT="#FFF9DB",RED="#E03131",RED_SOFT="#FFF0F0",BLUE="#1971C2",BLUE_SOFT="#E7F5FF";
+function initials(name) { return name.split(" ").slice(0, 2).map(w => w[0].toUpperCase()).join(""); }
+function avatarHue(name) { const hues = [22, 215, 142, 265, 186, 35]; return hues[name.charCodeAt(0) % hues.length]; }
 
-/* demo: crew on leave (would come from planner/HR store) */
-const ON_LEAVE = { "Cas Davide": ["2026-06-05"] };
-const onLeave = (n, d) => (ON_LEAVE[n] || []).includes(d);
+function emptyDocket() {
+  return { vehicleId: "", operatorIds: [], shotfirerIds: [], products: [{ materialId: "", plannedQty: "" }], services: [], notes: "" };
+}
 
-const lbl={fontSize:12,color:SLATE,fontWeight:600,marginBottom:6,textTransform:"uppercase",letterSpacing:.4,display:"block"};
-const fld={width:"100%",padding:"10px 12px",border:`1px solid ${LINE}`,borderRadius:9,fontSize:14,fontWeight:500,color:INK,background:"#fff",outline:"none",fontFamily:"inherit"};
-const selFld={...fld,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B6470' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 11px center",paddingRight:34,cursor:"pointer"};
-const secIc={width:36,height:36,borderRadius:9,background:ORANGE_SOFT,display:"flex",alignItems:"center",justifyContent:"center",color:ORANGE,flexShrink:0};
-const card={background:"#fff",border:`1px solid ${LINE}`,borderRadius:14};
-const chipBase={padding:"7px 12px",border:`1px solid ${LINE}`,background:"#fff",color:INK,borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"};
-const btnAdd={display:"inline-flex",alignItems:"center",gap:6,padding:"8px 13px",border:`1px dashed ${ORANGE_LINE}`,background:ORANGE_SOFT,color:ORANGE,borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"};
-const iconBtn={width:34,height:36,border:`1px solid ${LINE}`,background:"#fff",borderRadius:8,cursor:"pointer",color:RED,flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center"};
-const pill=(bg,fg)=>({fontSize:10.5,fontWeight:700,padding:"3px 9px",borderRadius:100,letterSpacing:.3,background:bg,color:fg});
-
-const fmtDate=(s)=>!s?"—":new Date(s+"T00:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
-const dowName=(s)=>["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(s+"T00:00:00").getDay()];
-
-function emptyDocket(){return{vehicleId:"",operatorIds:[],shotfirerIds:[],products:[{materialId:"",plannedQty:""}],services:[],notes:""};}
-
-/* convert a stored booking doc -> editable form state */
-function docToForm(doc){
+function docToForm(doc) {
   return {
-    _id: doc._id, blastNumber: doc.blastNumber, date: doc.date, startTime: doc.startTime||"04:30",
-    bookingType: doc.bookingType||"single", endDate: doc.endDate||"",
-    recFreq: doc.recurrence ? (doc.recurrence.frequency==="weekly"?"Weekly":"Daily") : "Daily",
+    _id: doc._id, blastNumber: doc.blastNumber, date: doc.date, startTime: doc.startTime || "04:30",
+    bookingType: doc.bookingType || "single", endDate: doc.endDate || "",
+    recFreq: doc.recurrence ? (doc.recurrence.frequency === "weekly" ? "Weekly" : "Daily") : "Daily",
     recEnd: doc.recurrence ? doc.recurrence.endDate : "",
     recWorkingOnly: doc.recurrence ? !!doc.recurrence.workingDaysOnly : true,
-    customerId: doc.customerId||"", shipToSite: doc.shipToSite||"", customerPO: doc.customerPO||"", contract: doc.contractId||"",
-    dockets: (doc.deliveryDockets||[]).map(dk=>({
-      vehicleId: dk.vehicleId||"", operatorIds:[...(dk.operatorIds||[])], shotfirerIds:[...(dk.shotfirerIds||[])],
-      products: (dk.products&&dk.products.length?dk.products.map(p=>({materialId:p.materialId,plannedQty:p.plannedQty})):[{materialId:"",plannedQty:""}]),
-      services: (dk.services||[]).map(s=>({serviceId:s.serviceId,qty:s.qty})),
-      notes: dk.notes||"",
+    customerId: doc.customerId || "", shipToSite: doc.shipToSite || "", customerPO: doc.customerPO || "", contract: doc.contractId || "",
+    dockets: (doc.deliveryDockets || []).map(dk => ({
+      vehicleId: dk.vehicleId || "", operatorIds: [...(dk.operatorIds || [])], shotfirerIds: [...(dk.shotfirerIds || [])],
+      products: (dk.products && dk.products.length ? dk.products.map(p => ({ materialId: p.materialId, plannedQty: p.plannedQty })) : [{ materialId: "", plannedQty: "" }]),
+      services: (dk.services || []).map(s => ({ serviceId: s.serviceId, qty: s.qty })),
+      notes: dk.notes || "",
     })),
   };
 }
 
-export default function BookingForm({ plant, editBlastId=null, expandDocket=null, onClose, onSaved }){
+export default function BookingForm({ plant, editBlastId = null, expandDocket = null, onClose, onSaved }) {
   const plantCode = plant?.code || "2025";
   const plantName = plant?.name || "Panna";
 
@@ -74,358 +44,548 @@ export default function BookingForm({ plant, editBlastId=null, expandDocket=null
       const doc = getBookingById(editBlastId);
       if (doc) return docToForm(doc);
     }
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const nextNum = nextBlastNumber(plantCode);
     return {
-      _id: nextBlastNumber(plantCode), blastNumber: nextBlastNumber(plantCode),
-      date:"2026-06-05", startTime:"04:30", bookingType:"single", endDate:"",
-      recFreq:"Daily", recEnd:"2026-07-31", recWorkingOnly:true,
-      customerId:"", shipToSite:"", customerPO:"", contract:"",
-      dockets:[emptyDocket()],
+      _id: nextNum, blastNumber: nextNum,
+      date: todayStr, startTime: "04:30", bookingType: "single", endDate: todayStr,
+      recFreq: "Daily", recEnd: "2026-07-31", recWorkingOnly: true,
+      customerId: "", shipToSite: "", customerPO: "", contract: "",
+      dockets: [emptyDocket()],
     };
   });
-  // which category accordions are open (per docket index -> {BULK,IS&PE})
-  const [accClosed, setAccClosed] = useState({});
-  // which dockets are expanded; in edit mode default to the clicked one
-  const [openDockets, setOpenDockets] = useState(() => {
-    if (isEdit && expandDocket != null) {
-      const o = {}; o[expandDocket] = true; return o;
-    }
-    return { 0: true };
-  });
+
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [accOpen, setAccOpen] = useState({ BULK: true, "IS&PE": true });
 
   const VEHICLE_GROUPS = VEHICLE_GROUPS_BY_PLANT[plantCode] || [];
   const CREW_GROUPS = CREW_GROUPS_BY_PLANT[plantCode] || [];
-  const OPERATORS = (CREW_GROUPS.find(g=>/operator/i.test(g.role))||{members:[]}).members;
-  const SHOTFIRERS = (CREW_GROUPS.find(g=>/blaster|shotfirer/i.test(g.role))||{members:[]}).members;
+  const OPERATORS = (CREW_GROUPS.find(g => /operator/i.test(g.role)) || { members: [] }).members;
+  const SHOTFIRERS = (CREW_GROUPS.find(g => /blaster|shotfirer/i.test(g.role)) || { members: [] }).members;
 
   const set = (patch) => setF(prev => ({ ...prev, ...patch }));
   const setDocket = (di, patch) => setF(prev => {
-    const dockets = prev.dockets.map((d,i)=> i===di ? {...d, ...patch} : d);
+    const dockets = prev.dockets.map((d, i) => i === di ? { ...d, ...patch } : d);
     return { ...prev, dockets };
   });
-  const customer = () => CUSTOMERS.find(c=>c.id===f.customerId);
 
-  /* recurring occurrence count + summary */
-  const occ = useMemo(()=>{
-    if (f.bookingType!=="recurring" || !f.date || !f.recEnd) return 0;
-    const s=new Date(f.date+"T00:00:00"), e=new Date(f.recEnd+"T00:00:00");
-    if (e<s) return 0; let n=0;
-    if (f.recFreq==="Daily"){ for(let d=new Date(s); d<=e; d.setDate(d.getDate()+1)){ const w=d.getDay(); if(f.recWorkingOnly&&(w===0||w===6))continue; n++; } }
-    else { for(let d=new Date(s); d<=e; d.setDate(d.getDate()+7)) n++; }
+  const customer = () => CUSTOMERS.find(c => c.id === f.customerId);
+
+  const occ = useMemo(() => {
+    if (f.bookingType !== "recurring" || !f.date || !f.recEnd) return 0;
+    const s = new Date(f.date + "T00:00:00"), e = new Date(f.recEnd + "T00:00:00");
+    if (e < s) return 0;
+    let n = 0;
+    if (f.recFreq === "Daily") {
+      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        const w = d.getDay();
+        if (f.recWorkingOnly && (w === 0 || w === 6)) continue;
+        n++;
+      }
+    } else {
+      for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 7)) n++;
+    }
     return n;
-  },[f.bookingType,f.date,f.recEnd,f.recFreq,f.recWorkingOnly]);
+  }, [f.bookingType, f.date, f.recEnd, f.recFreq, f.recWorkingOnly]);
 
   const recSummary = () => {
     if (!f.date || !f.recEnd) return "Set a start and end date to preview the schedule.";
-    if (f.recFreq==="Daily") return `Repeats daily at ${f.startTime}, ${f.recWorkingOnly?"Monday to Friday":"every day"}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ!==1?"s":""}.`;
-    return `Repeats weekly on ${dowName(f.date)} at ${f.startTime}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ!==1?"s":""}.`;
+    const fmtDate = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const dow = (s) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(s + "T00:00:00").getDay()];
+    if (f.recFreq === "Daily") return `Repeats daily at ${f.startTime}, ${f.recWorkingOnly ? "Monday to Friday" : "every day"}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
+    return `Repeats weekly on ${dow(f.date)} at ${f.startTime}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
   };
 
   const validationOk = () => {
     if (!(f.date && f.customerId && f.shipToSite)) return false;
-    if (f.bookingType==="multi" && !f.endDate) return false;
-    if (f.bookingType==="recurring" && (!f.recEnd || occ<1)) return false;
-    return f.dockets.length>0 && f.dockets.every(dk =>
-      dk.vehicleId && (dk.products.some(p=>p.materialId&&p.plannedQty) || dk.services.length>0));
+    if (f.bookingType === "multi" && !f.endDate) return false;
+    if (f.bookingType === "recurring" && (!f.recEnd || occ < 1)) return false;
+    return f.dockets.length > 0 && f.dockets.every(dk =>
+      dk.vehicleId && (dk.products.some(p => p.materialId && p.plannedQty) || dk.services.length > 0)
+    );
+  };
+
+  const missingItems = () => {
+    const items = [];
+    if (!f.date) items.push("Delivery date");
+    if (!f.customerId) items.push("Customer");
+    if (!f.shipToSite) items.push("Ship-to site");
+    if (f.bookingType === "multi" && !f.endDate) items.push("End date for multi-day booking");
+    if (f.bookingType === "recurring" && (!f.recEnd || occ < 1)) items.push("Recurrence end date");
+    f.dockets.forEach((dk, i) => {
+      if (!dk.vehicleId) items.push(`Docket ${i + 1}: Vehicle`);
+      if (!dk.products.some(p => p.materialId && p.plannedQty) && !dk.services.length)
+        items.push(`Docket ${i + 1}: Products or services`);
+    });
+    return items;
   };
 
   const buildDoc = () => {
     const c = customer(); const now = new Date().toISOString();
     return {
-      _id: f._id, blastNumber: f.blastNumber, plantCode,
+      _id: f._id, blastNumber: f._id, plantCode: plantCode,
       date: f.date, startTime: f.startTime,
       bookingType: f.bookingType,
-      endDate: f.bookingType==="multi" ? f.endDate : null,
-      recurrence: f.bookingType==="recurring" ? { frequency: f.recFreq.toLowerCase(), endDate: f.recEnd, workingDaysOnly: f.recWorkingOnly, occurrences: occ } : null,
-      customerId: f.customerId, customerName: c?c.name:"", shipToSite: f.shipToSite,
-      customerPO: f.customerPO, contractId: f.contract||null,
-      deliveryDockets: f.dockets.map((dk,i)=>({
-        docketNumber: `${f.blastNumber}-${String(i+1).padStart(2,"0")}`,
+      endDate: f.bookingType === "multi" ? f.endDate : null,
+      recurrence: f.bookingType === "recurring" ? { frequency: f.recFreq.toLowerCase(), endDate: f.recEnd, workingDaysOnly: f.recWorkingOnly, occurrences: occ } : null,
+      customerId: f.customerId, customerName: c ? c.name : "", shipToSite: f.shipToSite,
+      customerPO: f.customerPO, contractId: f.contract || null, status: "Planned",
+      deliveryDockets: f.dockets.map((dk, i) => ({
+        docketNumber: `${f._id}-${String(i + 1).padStart(2, "0")}`,
         status: "Planned",
         vehicleId: dk.vehicleId,
         operatorIds: dk.operatorIds, shotfirerIds: dk.shotfirerIds,
-        products: dk.products.filter(p=>p.materialId&&p.plannedQty).map(p=>{
+        products: dk.products.filter(p => p.materialId && p.plannedQty).map(p => {
           const m = PRODUCT_MAP[p.materialId];
-          return { materialId:p.materialId, name:m?m.name:p.materialId, category:m?m.cat:null, plannedQty:Number(p.plannedQty), uom:m?m.uom:null, actualQty:null };
+          return { materialId: p.materialId, name: m ? m.name : p.materialId, category: m ? m.cat : null, plannedQty: Number(p.plannedQty), uom: m ? m.uom : null, actualQty: null };
         }),
-        services: dk.services.map(s=>{
+        services: dk.services.map(s => {
           const sv = SERVICE_MAP[s.serviceId];
-          return { serviceId:s.serviceId, name:sv?sv.name:s.serviceId, qty:Number(s.qty)||1, uom:sv?sv.uom:"ea" };
+          return { serviceId: s.serviceId, name: sv ? sv.name : s.serviceId, qty: Number(s.qty) || 1, uom: sv ? sv.uom : "ea" };
         }),
-        notes: dk.notes||"", signature:null,
+        notes: dk.notes || "", signature: null
       })),
-      status: "Planned",
-      createdAt: now, updatedAt: now,
+      createdAt: now, updatedAt: now
     };
   };
 
   const save = () => {
-    if (!validationOk()) return;
+    if (!validationOk()) { setSaveAttempted(true); return; }
     const doc = buildDoc();
     if (isEdit) replaceBooking(doc); else addBooking(doc);
     onSaved && onSaved(doc);
   };
 
+  const fmtDate = (s) => !s ? "—" : new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const dayFullStr = (s) => !s ? "" : new Date(s + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   const cust = customer();
   const ok = validationOk();
+  const missing = missingItems();
 
-  return (
-    <div style={{fontFamily:"'DM Sans',-apple-system,system-ui,sans-serif",color:INK}}>
-      {/* sticky top bar */}
-      <div style={{position:"sticky",top:0,zIndex:50,background:"rgba(247,248,250,.92)",backdropFilter:"blur(8px)",borderBottom:`1px solid ${LINE}`,margin:"-28px -28px 0",padding:"16px 28px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <button onClick={onClose} style={{...chipBase,padding:"9px 14px"}}><ArrowLeft size={16}/> Board</button>
-          <div style={{flex:1}}>
-            <h1 style={{fontSize:26,fontWeight:700,letterSpacing:-.5,margin:0}}>{isEdit?"Edit Booking":"Create Booking"}</h1>
-            <div style={{color:SLATE,fontSize:14,marginTop:5,display:"flex",alignItems:"center",gap:9}}>
-              <span style={{fontWeight:700,color:ORANGE}}>{f.blastNumber}</span>
-              <span style={pill(BLUE_SOFT,BLUE)}>PLANNED</span>
-              <span>· {plantName} ({plantCode})</span>
-            </div>
-          </div>
-          <button onClick={onClose} style={{...chipBase,padding:"10px 16px"}}>Cancel</button>
-          <button onClick={save} disabled={!ok} style={{padding:"11px 22px",border:"none",background:ok?ORANGE:"#EBC3A6",color:"#fff",borderRadius:10,fontSize:14,fontWeight:700,cursor:ok?"pointer":"not-allowed",fontFamily:"inherit"}}>{isEdit?"Save Changes":"Save Booking"}</button>
-        </div>
-      </div>
+  const schedDone = !!(f.date && f.startTime);
+  const custDone = !!(f.customerId && f.shipToSite);
+  const dksDone = f.dockets.length > 0 && f.dockets.every(dk => dk.vehicleId && (dk.products.some(p => p.materialId && p.plannedQty) || dk.services.length > 0));
 
-      <div style={{paddingTop:24}}>
-        {/* upper grid: Schedule | Customer */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
-          {/* SCHEDULE */}
-          <div style={{...card,padding:22}}>
-            <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}><span style={secIc}><CalendarRange size={19}/></span><span style={{fontSize:16,fontWeight:700,letterSpacing:-.2}}>Schedule</span></div>
-            <div style={{display:"flex",gap:12,marginBottom:16}}>
-              <div style={{flex:1.3}}><label style={lbl}>Delivery date <span style={{color:ORANGE}}>*</span></label><input type="date" value={f.date} onChange={e=>set({date:e.target.value})} style={fld}/></div>
-              <div style={{flex:1}}><label style={lbl}>Start time</label><input type="time" value={f.startTime} onChange={e=>set({startTime:e.target.value})} style={fld}/></div>
-            </div>
-            <label style={lbl}>Booking type</label>
-            <div style={{display:"flex",gap:6}}>
-              {[["single","Single day"],["multi","Multi-day"],["recurring","Recurring"]].map(([v,t])=>(
-                <button key={v} onClick={()=>set({bookingType:v})} style={{flex:1,padding:10,border:`1px solid ${f.bookingType===v?ORANGE:LINE}`,background:f.bookingType===v?ORANGE_SOFT:"#fff",color:f.bookingType===v?ORANGE:INK,borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>
-              ))}
-            </div>
-            {f.bookingType==="multi" && (
-              <div style={{marginTop:16}}><label style={lbl}>End date <span style={{color:ORANGE}}>*</span></label><input type="date" value={f.endDate} min={f.date} onChange={e=>set({endDate:e.target.value})} style={fld}/></div>
-            )}
-            {f.bookingType==="recurring" && (
-              <>
-                <div style={{display:"flex",gap:12,margin:"16px 0 12px"}}>
-                  <div style={{flex:1}}><label style={lbl}>Frequency</label>
-                    <select value={f.recFreq} onChange={e=>set({recFreq:e.target.value})} style={selFld}><option>Daily</option><option>Weekly</option></select>
-                  </div>
-                  <div style={{flex:1}}><label style={lbl}>Repeat until <span style={{color:ORANGE}}>*</span></label><input type="date" value={f.recEnd} min={f.date} onChange={e=>set({recEnd:e.target.value})} style={fld}/></div>
-                </div>
-                {f.recFreq==="Daily" && (
-                  <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:INK,marginBottom:12,cursor:"pointer",fontWeight:500}}>
-                    <input type="checkbox" checked={f.recWorkingOnly} onChange={e=>set({recWorkingOnly:e.target.checked})} style={{width:15,height:15,accentColor:ORANGE}}/> Working days only (Mon–Fri)
-                  </label>
-                )}
-                <div style={{fontSize:13,color:"#1A5C8F",background:BLUE_SOFT,border:"1px solid #BBDCF5",borderRadius:10,padding:"12px 14px",display:"flex",gap:9,alignItems:"flex-start",lineHeight:1.55}}>
-                  <Repeat size={16} style={{color:BLUE,marginTop:2,flexShrink:0}}/><span>{recSummary()}</span>
-                </div>
-              </>
-            )}
-          </div>
+  const toggleProductCat = (cat) => setAccOpen(prev => ({ ...prev, [cat]: !prev[cat] }));
 
-          {/* CUSTOMER */}
-          <div style={{...card,padding:22}}>
-            <div style={{display:"flex",alignItems:"center",gap:11,marginBottom:20}}><span style={secIc}><Building2 size={19}/></span><span style={{fontSize:16,fontWeight:700,letterSpacing:-.2}}>Customer</span></div>
-            <div style={{marginBottom:16}}><label style={lbl}>Customer <span style={{color:ORANGE}}>*</span></label>
-              <select value={f.customerId} onChange={e=>set({customerId:e.target.value,shipToSite:""})} style={selFld}>
-                <option value="">Select customer…</option>
-                {CUSTOMERS.map(c=><option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
-              </select>
-            </div>
-            <div style={{marginBottom:16}}><label style={lbl}>Ship-to site <span style={{color:ORANGE}}>*</span></label>
-              <select value={f.shipToSite} onChange={e=>set({shipToSite:e.target.value})} disabled={!cust} style={selFld}>
-                <option value="">{cust?"Select site…":"Select a customer first"}</option>
-                {cust && cust.sites.map(s=><option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div style={{display:"flex",gap:12,marginBottom:14}}>
-              <div style={{flex:1}}><label style={lbl}>Customer PO</label><input value={f.customerPO} onChange={e=>set({customerPO:e.target.value})} placeholder="e.g. 4500087240" style={fld}/></div>
-              <div style={{flex:1}}><label style={lbl}>Contract</label><input value={f.contract} onChange={e=>set({contract:e.target.value})} placeholder="Contract ref" style={fld}/></div>
-            </div>
-            <div style={{fontSize:12,color:SLATE,lineHeight:1.5,display:"flex",gap:7,alignItems:"flex-start"}}><Info size={14} style={{marginTop:1,color:ORANGE,flexShrink:0}}/> In production the contract is selected, and it drives which products and prices are available.</div>
-          </div>
-        </div>
-
-        {/* DOCKETS header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div style={{display:"flex",alignItems:"center",gap:11}}>
-            <span style={secIc}><ClipboardList size={19}/></span>
-            <span style={{fontSize:16,fontWeight:700,letterSpacing:-.2}}>Delivery Dockets</span>
-            <span style={{fontSize:12.5,fontWeight:700,color:SLATE,background:"#fff",border:`1px solid ${LINE}`,padding:"2px 10px",borderRadius:100}}>{f.dockets.length}</span>
-          </div>
-          <button onClick={()=>{ setF(prev=>({...prev,dockets:[...prev.dockets,emptyDocket()]})); setOpenDockets(o=>({...o,[f.dockets.length]:true})); }} style={{...btnAdd,padding:"9px 15px"}}><Plus size={15}/> Add Delivery Docket</button>
-        </div>
-
-        {f.dockets.map((dk,di)=>(
-          <DocketCard key={di} di={di} dk={dk} f={f} plantCode={plantCode}
-            VEHICLE_GROUPS={VEHICLE_GROUPS} OPERATORS={OPERATORS} SHOTFIRERS={SHOTFIRERS}
-            open={!!openDockets[di]} onToggleOpen={()=>setOpenDockets(o=>({...o,[di]:!o[di]}))}
-            accClosed={accClosed[di]||{}} setAccClosed={(cat)=>setAccClosed(prev=>({...prev,[di]:{...(prev[di]||{}),[cat]:!((prev[di]||{})[cat])}}))}
-            canRemove={f.dockets.length>1}
-            onRemove={()=>setF(prev=>({...prev,dockets:prev.dockets.filter((_,i)=>i!==di)}))}
-            setDocket={(patch)=>setDocket(di,patch)} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Docket card ---------- */
-function DocketCard({ di, dk, f, plantCode, VEHICLE_GROUPS, OPERATORS, SHOTFIRERS, open, onToggleOpen, accClosed, setAccClosed, canRemove, onRemove, setDocket }){
-  const conf = dk.vehicleId ? Array.from(new Set(vehicleAssignments(dk.vehicleId, f.date, f._id))) : [];
-  const docketNumber = `${f.blastNumber}-${String(di+1).padStart(2,"0")}`;
-
-  const toggleOp = (o) => setDocket({ operatorIds: dk.operatorIds.includes(o) ? dk.operatorIds.filter(x=>x!==o) : [...dk.operatorIds,o] });
-  const toggleSf = (o) => setDocket({ shotfirerIds: dk.shotfirerIds.includes(o) ? dk.shotfirerIds.filter(x=>x!==o) : [...dk.shotfirerIds,o] });
-  const setProd = (pi,patch)=>setDocket({ products: dk.products.map((p,i)=>i===pi?{...p,...patch}:p) });
-  const addProd = ()=>setDocket({ products:[...dk.products,{materialId:"",plannedQty:""}] });
-  const rmProd = (pi)=>{ const next=dk.products.filter((_,i)=>i!==pi); setDocket({ products: next.length?next:[{materialId:"",plannedQty:""}] }); };
-  const setSvc = (si,patch)=>setDocket({ services: dk.services.map((s,i)=>i===si?{...s,...patch}:s) });
-  const addSvc = ()=>setDocket({ services:[...dk.services,{serviceId:"SVC-SETUP",qty:1}] });
-  const rmSvc = (si)=>setDocket({ services: dk.services.filter((_,i)=>i!==si) });
-
-  /* group completed products by category; incomplete rows render after */
-  const byCat = { BULK:[], "IS&PE":[] };
-  dk.products.forEach((p,pi)=>{ const m=p.materialId?PRODUCT_MAP[p.materialId]:null; if(m) byCat[m.cat].push({p,pi}); });
-  const incomplete = dk.products.map((p,pi)=>({p,pi})).filter(({p})=>!p.materialId);
-
-  const ProductRow = ({p,pi}) => {
-    const m = p.materialId?PRODUCT_MAP[p.materialId]:null; const uom=m?m.uom:"—";
+  const renderProductRow = (di, p, pi) => {
+    const m = p.materialId ? PRODUCT_MAP[p.materialId] : null;
+    const uom = m ? m.uom : "—";
+    const cat = m ? m.cat : null;
+    const catStyles = { BULK: { bg: "#EAF4FF", c: "#1762A8" }, "IS&PE": { bg: "#F3EEFF", c: "#6B3FC4" } };
+    const cs = cat ? catStyles[cat] : null;
     return (
-      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,maxWidth:760}}>
-        <select value={p.materialId} onChange={e=>setProd(pi,{materialId:e.target.value})} style={{...selFld,flex:2.6}}>
+      <div key={pi} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, maxWidth: 760 }}>
+        {cs && <span style={{ fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 5, background: cs.bg, color: cs.c, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: .3, flexShrink: 0 }}>{cat}</span>}
+        <select className="fld" value={p.materialId} onChange={e => {
+          const newProducts = [...f.dockets[di].products];
+          newProducts[pi].materialId = e.target.value;
+          setDocket(di, { products: newProducts });
+        }} style={{ flex: 1, fontSize: 13.5 }}>
           <option value="">Select product…</option>
-          {PRODUCT_CATS.map(c=>(<optgroup key={c.cat} label={c.cat}>{c.items.map(pp=><option key={pp.id} value={pp.id}>{pp.name}</option>)}</optgroup>))}
+          {PRODUCT_CATS.map(c => (
+            <optgroup key={c.cat} label={c.cat}>
+              {c.items.map(pp => <option key={pp.id} value={pp.id}>{pp.name}</option>)}
+            </optgroup>
+          ))}
         </select>
-        <input type="number" min="0" placeholder="Qty" value={p.plannedQty} onChange={e=>setProd(pi,{plannedQty:e.target.value})} style={{...fld,width:90}}/>
-        <span style={{width:34,textAlign:"center",fontSize:13,color:SLATE,fontWeight:600}}>{uom}</span>
-        <button onClick={()=>rmProd(pi)} style={iconBtn}><X size={15}/></button>
+        <input className="fld" type="number" min="0" placeholder="Qty" value={p.plannedQty || ""} onChange={e => {
+          const newProducts = [...f.dockets[di].products];
+          newProducts[pi].plannedQty = e.target.value;
+          setDocket(di, { products: newProducts });
+        }} style={{ width: 88 }} />
+        <span style={{ width: 34, textAlign: "center", fontSize: 13, color: "#5B6470", fontWeight: 600, flexShrink: 0 }}>{uom}</span>
+        <button className="icon-btn" onClick={() => {
+          let newProducts = [...f.dockets[di].products];
+          newProducts.splice(pi, 1);
+          if (!newProducts.length) newProducts = [{ materialId: "", plannedQty: "" }];
+          setDocket(di, { products: newProducts });
+        }}><i className="ti ti-x" style={{ fontSize: 13 }}></i></button>
       </div>
     );
   };
 
   return (
-    <div style={{...card,marginBottom:16,overflow:"hidden",borderLeft:`3px solid ${ORANGE}`}}>
-      {/* docket header (click to expand/collapse) */}
-      <div onClick={onToggleOpen} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"15px 22px",background:ORANGE_SOFT,borderBottom:open?`1px solid ${LINE}`:"none",cursor:"pointer"}}>
-        <div style={{display:"flex",alignItems:"center",gap:11}}>
-          {open?<ChevronDown size={18} style={{color:SLATE}}/>:<ChevronRight size={18} style={{color:SLATE}}/>}
-          <span style={{width:28,height:28,borderRadius:8,background:ORANGE,color:"#fff",fontSize:13,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{di+1}</span>
-          <span style={{fontSize:15,fontWeight:700,letterSpacing:-.2}}>Docket {docketNumber}</span>
-          <span style={pill(BLUE_SOFT,BLUE)}>PLANNED</span>
-          {dk.vehicleId && <span style={{fontSize:12.5,color:SLATE,fontWeight:600}}>· {dk.vehicleId}</span>}
-          {conf.length>0 && <AlertTriangle size={15} style={{color:AMBER}} title={"Double-booked with "+conf.join(", ")}/>}
+    <div className="bf-wrap">
+      {/* Sticky Header */}
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(236,239,243,.96)", backdropFilter: "blur(14px)", borderBottom: "1px solid #D3D9E2" }}>
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "16px 32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 12 }}>
+            <button className="chip" style={{ gap: 6 }} onClick={onClose}><i className="ti ti-arrow-left" style={{ fontSize: 14 }}></i> Board</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -.4, margin: 0 }}>{isEdit ? "Edit Booking" : "Create Booking"}</h1>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#E8590C" }}>{f._id}</span>
+                <span className="pill" style={{ background: "#E7F5FF", color: "#1971C2" }}>PLANNED</span>
+                <span style={{ fontSize: 13, color: "#5B6470" }}>· {plantName} ({plantCode})</span>
+              </div>
+            </div>
+            <button className="chip" style={{ padding: "9px 16px" }} onClick={onClose}>Cancel</button>
+            <div className="saveWrap" style={{ position: "relative" }}>
+              <button onClick={save} style={{ padding: "10px 24px", border: "none", background: ok ? "#E8590C" : "#D0D4DA", color: ok ? "#fff" : "#9AA0A8", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: ok ? "pointer" : "not-allowed", letterSpacing: -.2, transition: "background .15s, transform .1s" }}>{isEdit ? "Save Changes" : "Save Booking"}</button>
+              {!ok && missing.length > 0 && (
+                <div className="missingTip" style={{ display: "none", position: "absolute", right: 0, top: "calc(100% + 10px)", background: "#1A1D21", color: "#E2E5EA", borderRadius: 12, padding: "14px 16px", fontSize: 12.5, lineHeight: 1.75, minWidth: 248, zIndex: 200, boxShadow: "0 10px 30px rgba(0,0,0,.3)", pointerEvents: "none", animation: "slideDown .15s ease" }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "#F4A96A", textTransform: "uppercase", letterSpacing: .6, marginBottom: 10 }}>Still needed to save</div>
+                  {missing.map((m, idx) => (
+                    <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "1px 0" }}>
+                      <i className="ti ti-point-filled" style={{ color: "#E8590C", fontSize: 11, flexShrink: 0, marginTop: 3 }}></i>{m}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            {[[schedDone, "Schedule", "ti-calendar-event"], [custDone, "Customer & Site", "ti-building"], [dksDone, "Delivery Dockets", "ti-clipboard-list"]].map((step, i) => {
+              const [done, label, icon] = step;
+              return (
+                <React.Fragment key={label}>
+                  {i > 0 && <i className="ti ti-chevron-right" style={{ color: "#B8BFC8", fontSize: 11 }}></i>}
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 8px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: done ? "#EBFBEE" : "#fff", color: done ? "#2F9E44" : "#5B6470", border: `1px solid ${done ? "#ABEDC2" : "#DDE1E7"}` }}>
+                    <i className={`ti ${done ? "ti-circle-check-filled" : icon}`} style={{ fontSize: 13 }}></i> {label}
+                  </span>
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
-        {canRemove && <button onClick={(e)=>{e.stopPropagation();onRemove();}} style={{border:`1px solid ${LINE}`,background:"#fff",borderRadius:8,padding:"7px 12px",cursor:"pointer",color:RED,fontSize:13,fontWeight:600,display:"inline-flex",alignItems:"center",gap:6,fontFamily:"inherit"}}><Trash2 size={14}/> Remove</button>}
       </div>
 
-      {open && (
-      <div style={{padding:22}}>
-        {/* vehicle + crew */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1.5fr",gap:24,marginBottom:22}}>
-          <div>
-            <label style={lbl}>Vehicle <span style={{color:ORANGE}}>*</span></label>
-            <select value={dk.vehicleId} onChange={e=>setDocket({vehicleId:e.target.value})} style={selFld}>
-              <option value="">Select vehicle…</option>
-              {VEHICLE_GROUPS.map(g=>(
-                <optgroup key={g.type} label={g.type}>
-                  {g.ids.map(id=>{
-                    const busy=vehicleAssignments(id,f.date,f._id);
-                    const maint=id==="MH-12-BMD-03";
-                    const tag=maint?" — maintenance":(busy.length?" — booked":" — available");
-                    return <option key={id} value={id} disabled={maint}>{id}{tag}</option>;
-                  })}
-                </optgroup>
-              ))}
-            </select>
-            {conf.length>0 && (
-              <div style={{fontSize:12,color:"#8A5A00",background:AMBER_SOFT,border:"1px solid #F4D78A",borderRadius:8,padding:"9px 11px",marginTop:9,display:"flex",gap:7,alignItems:"flex-start"}}>
-                <AlertTriangle size={14} style={{color:AMBER,marginTop:1,flexShrink:0}}/><span>Double-booked with <b>{conf.join(", ")}</b> on this date. Allowed — flagged on the board.</span>
+      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "28px 32px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
+          {/* Schedule Card */}
+          <div className="bf-card" style={{ padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 22 }}>
+              <span className={`sec-ic ${schedDone ? "done" : ""}`}><i className={`ti ${schedDone ? "ti-circle-check-filled" : "ti-calendar-event"}`} style={{ fontSize: 18 }}></i></span>
+              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -.2 }}>Schedule</span>
+              {schedDone && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, padding: "3px 10px", background: "#EBFBEE", color: "#2F9E44", borderRadius: 100 }}>Complete ✓</span>}
+            </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+              <div style={{ flex: 1.4 }}>
+                <label className="lbl">Delivery Date <span style={{ color: "#E8590C" }}>*</span></label>
+                <input type="date" className={`fld ${saveAttempted && !f.date ? "err" : ""}`} value={f.date} onChange={e => set({ date: e.target.value })} />
+                {saveAttempted && !f.date && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="lbl">Start Time</label>
+                <input type="time" className="fld" value={f.startTime} onChange={e => set({ startTime: e.target.value })} />
+              </div>
+            </div>
+            {f.date ? (
+              <div style={{ marginBottom: 18, display: "inline-flex", alignItems: "center", gap: 6, background: "#F5F6F8", border: "1px solid #E4E8ED", borderRadius: 7, padding: "5px 10px", fontSize: 12.5, color: "#5B6470" }}>
+                <i className="ti ti-calendar-stats" style={{ color: "#E8590C", fontSize: 13 }}></i>{dayFullStr(f.date)}
+              </div>
+            ) : <div style={{ marginBottom: 18 }}></div>}
+
+            <label className="lbl">Booking Type</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: f.bookingType !== "single" ? 18 : 0 }}>
+              {[["single", "Single Day", "ti-calendar"], ["multi", "Multi-Day", "ti-calendar-week"], ["recurring", "Recurring", "ti-repeat"]].map(([val, label, icon]) => {
+                const on = f.bookingType === val;
+                return (
+                  <button key={val} onClick={() => set({ bookingType: val })} style={{ flex: 1, padding: "12px 8px", border: `1px solid ${on ? "#E8590C" : "#E4E8ED"}`, background: on ? "#FFF1E8" : "#fff", color: on ? "#E8590C" : "#5B6470", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, transition: "all .12s" }}>
+                    <i className={`ti ${icon}`} style={{ fontSize: 20 }}></i>{label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {f.bookingType === "multi" && (
+              <div>
+                <label className="lbl">End Date <span style={{ color: "#E8590C" }}>*</span></label>
+                <input type="date" className={`fld ${saveAttempted && !f.endDate ? "err" : ""}`} value={f.endDate} min={f.date} onChange={e => set({ endDate: e.target.value })} />
+                {f.endDate && (
+                  <div style={{ marginTop: 7, display: "inline-flex", alignItems: "center", gap: 6, background: "#F5F6F8", border: "1px solid #E4E8ED", borderRadius: 7, padding: "5px 10px", fontSize: 12.5, color: "#5B6470" }}>
+                    <i className="ti ti-clock" style={{ color: "#E8590C", fontSize: 13 }}></i>{Math.round((new Date(f.endDate + "T00:00:00") - new Date(f.date + "T00:00:00")) / 86400000) + 1} days total · ends {fmtDate(f.endDate)}
+                  </div>
+                )}
               </div>
             )}
+            {f.bookingType === "recurring" && (
+              <>
+                <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+                  <div style={{ flex: 1 }}><label className="lbl">Frequency</label>
+                    <select className="fld" value={f.recFreq} onChange={e => set({ recFreq: e.target.value })}>
+                      <option>Daily</option><option>Weekly</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}><label className="lbl">Repeat Until <span style={{ color: "#E8590C" }}>*</span></label>
+                    <input type="date" className={`fld ${saveAttempted && !f.recEnd ? "err" : ""}`} value={f.recEnd} min={f.date} onChange={e => set({ recEnd: e.target.value })} />
+                  </div>
+                </div>
+                {f.recFreq === "Daily" && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#1A1D21", marginBottom: 13, cursor: "pointer", fontWeight: 500 }}>
+                    <input type="checkbox" checked={f.recWorkingOnly} onChange={e => set({ recWorkingOnly: e.target.checked })} style={{ width: 15, height: 15, accentColor: "#E8590C" }} /> Working days only (Mon–Fri)
+                  </label>
+                )}
+                <div style={{ fontSize: 13, color: "#1A5C8F", background: "#E7F5FF", border: "1px solid #BDD8F5", borderRadius: 10, padding: "12px 14px", display: "flex", gap: 9, alignItems: "flex-start", lineHeight: 1.55 }}>
+                  <i className="ti ti-repeat" style={{ color: "#1971C2", marginTop: 2, flexShrink: 0, fontSize: 16 }}></i><span>{recSummary()}</span>
+                </div>
+              </>
+            )}
           </div>
-          <div>
-            <label style={lbl}>BMD Operators</label>
-            <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:14}}>
-              {OPERATORS.map(o=>{
-                const on=dk.operatorIds.includes(o); const leave=onLeave(o,f.date); const busy=personAssignments(o,f.date,f._id);
-                if(leave) return <span key={o} style={{...chipBase,background:BG,color:"#A4ABB4",cursor:"not-allowed"}} title="On leave">{o} <span style={{width:7,height:7,borderRadius:"50%",background:RED,display:"inline-block"}}/></span>;
-                const dotc=busy.length?AMBER:GREEN;
-                return <button key={o} onClick={()=>toggleOp(o)} title={busy.length?"Already on "+busy.join(", "):"Available"} style={{...chipBase,border:`1px solid ${on?ORANGE:LINE}`,background:on?ORANGE_SOFT:"#fff",color:on?ORANGE:INK}}>{on&&<Check size={13}/>}{o} <span style={{width:7,height:7,borderRadius:"50%",background:dotc,display:"inline-block"}}/></button>;
-              })}
+
+          {/* Customer Card */}
+          <div className="bf-card" style={{ padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 22 }}>
+              <span className={`sec-ic ${custDone ? "done" : ""}`}><i className={`ti ${custDone ? "ti-circle-check-filled" : "ti-building-warehouse"}`} style={{ fontSize: 18 }}></i></span>
+              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -.2 }}>Customer</span>
+              {custDone && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, padding: "3px 10px", background: "#EBFBEE", color: "#2F9E44", borderRadius: 100 }}>Complete ✓</span>}
             </div>
-            <label style={lbl}>Blaster / Shotfirer</label>
-            <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-              {SHOTFIRERS.map(o=>{
-                const on=dk.shotfirerIds.includes(o); const busy=personAssignments(o,f.date,f._id); const dotc=busy.length?AMBER:GREEN;
-                return <button key={o} onClick={()=>toggleSf(o)} style={{...chipBase,border:`1px solid ${on?ORANGE:LINE}`,background:on?ORANGE_SOFT:"#fff",color:on?ORANGE:INK}}>{on&&<Check size={13}/>}{o} <span style={{width:7,height:7,borderRadius:"50%",background:dotc,display:"inline-block"}}/></button>;
-              })}
+            <div style={{ marginBottom: cust ? 8 : 18 }}>
+              <label className="lbl">Customer <span style={{ color: "#E8590C" }}>*</span></label>
+              <select className={`fld ${saveAttempted && !f.customerId ? "err" : ""}`} value={f.customerId} onChange={e => set({ customerId: e.target.value, shipToSite: "" })}>
+                <option value="">Select customer…</option>
+                {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name} ({c.id})</option>)}
+              </select>
+              {saveAttempted && !f.customerId && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
             </div>
-            <div style={{display:"flex",gap:16,marginTop:11,fontSize:11,color:SLATE}}>
-              <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:7,height:7,borderRadius:"50%",background:GREEN}}/> Available</span>
-              <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:7,height:7,borderRadius:"50%",background:AMBER}}/> Booked</span>
-              <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:7,height:7,borderRadius:"50%",background:RED}}/> On leave</span>
+            {cust && (
+              <div style={{ marginBottom: 16, padding: "10px 12px", background: "#F7F8FA", borderRadius: 10, border: "1px solid #E4E8ED", display: "flex", alignItems: "center", gap: 10, animation: "fadeIn .15s ease" }}>
+                <span style={{ width: 30, height: 30, borderRadius: 8, background: `hsl(${avatarHue(cust.name)},90%,94%)`, color: `hsl(${avatarHue(cust.name)},75%,38%)`, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{cust.name.charAt(0)}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{cust.name}</div>
+                  <div style={{ fontSize: 12, color: "#5B6470" }}>ID {cust.id} · {cust.sites.length} site{cust.sites.length !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+            )}
+            <div style={{ marginBottom: 16 }}>
+              <label className="lbl">Ship-to Site <span style={{ color: "#E8590C" }}>*</span></label>
+              <select className={`fld ${saveAttempted && !f.shipToSite ? "err" : ""}`} disabled={!cust} value={f.shipToSite} onChange={e => set({ shipToSite: e.target.value })}>
+                <option value="">{cust ? "Select site…" : "Select a customer first"}</option>
+                {cust && cust.sites.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              {saveAttempted && !f.shipToSite && cust && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
+            </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}><label className="lbl">Customer PO</label><input className="fld" placeholder="e.g. 4500087240" value={f.customerPO} onChange={e => set({ customerPO: e.target.value })} /></div>
+              <div style={{ flex: 1 }}><label className="lbl">Contract</label><input className="fld" placeholder="Contract ref" value={f.contract} onChange={e => set({ contract: e.target.value })} /></div>
+            </div>
+            <div style={{ fontSize: 12.5, color: "#1A5C8F", background: "#E7F5FF", border: "1px solid #BDD8F5", borderRadius: 9, padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.55 }}>
+              <i className="ti ti-info-circle" style={{ color: "#1971C2", flexShrink: 0, marginTop: 1, fontSize: 14 }}></i><span>In production, selecting a contract drives available products and pricing.</span>
             </div>
           </div>
         </div>
 
-        {/* PRODUCTS — single label + category accordions */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <span style={{fontSize:11.5,color:SLATE,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Products</span>
-          <button onClick={addProd} style={{...btnAdd,padding:"6px 11px",fontSize:12.5}}><Plus size={14}/> Add product</button>
+        {/* Dockets Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <span className={`sec-ic ${dksDone ? "done" : ""}`}><i className={`ti ${dksDone ? "ti-circle-check-filled" : "ti-clipboard-list"}`} style={{ fontSize: 18 }}></i></span>
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -.2 }}>Delivery Dockets</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#5B6470", background: "#fff", border: "1px solid #E4E8ED", padding: "2px 10px", borderRadius: 100 }}>{f.dockets.length}</span>
+          </div>
+          <button className="btn-add" style={{ padding: "9px 15px" }} onClick={() => setF(prev => ({ ...prev, dockets: [...prev.dockets, emptyDocket()] }))}><i className="ti ti-plus"></i> Add Delivery Docket</button>
         </div>
-        {["BULK","IS&PE"].map(cat=>{
-          const rows=byCat[cat]; if(!rows.length) return null;
-          const closed=!!accClosed[cat];
+
+        {/* Dockets List */}
+        {f.dockets.map((dk, di) => {
+          const conf = dk.vehicleId && f.date ? vehicleAssignments(dk.vehicleId, f.date, isEdit ? f._id : null) : [];
+          const dkProdCount = dk.products.filter(p => p.materialId && p.plannedQty).length;
+          const dkSvcCount = dk.services.length;
+          const dkNumber = `${f._id}-${String(di + 1).padStart(2, "0")}`;
+          const dkReady = dk.vehicleId && (dkProdCount > 0 || dkSvcCount > 0);
+
+          const byCat = { BULK: [], "IS&PE": [] };
+          dk.products.forEach((p, pi) => {
+            const m = p.materialId ? PRODUCT_MAP[p.materialId] : null;
+            if (m && byCat[m.cat]) byCat[m.cat].push({ p, pi });
+          });
+          const anyProducts = dk.products.some(p => p.materialId);
+
           return (
-            <div key={cat} style={{marginBottom:10}}>
-              <div onClick={()=>setAccClosed(cat)} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 14px",cursor:"pointer",background:"#FCFCFD",borderRadius:10,border:`1px solid ${LINE}`,userSelect:"none"}}>
-                {closed?<ChevronRight size={16} style={{color:SLATE}}/>:<ChevronDown size={16} style={{color:SLATE}}/>}
-                <span style={{fontSize:10,fontWeight:700,letterSpacing:.4,padding:"3px 9px",borderRadius:6,textTransform:"uppercase",background:cat==="BULK"?"#EAF4FF":"#F3EEFF",color:cat==="BULK"?"#1762A8":"#6B3FC4"}}>{cat}</span>
-                <span style={{fontSize:12.5,color:SLATE,fontWeight:600}}>{rows.length} item{rows.length!==1?"s":""}</span>
+            <div key={di} className="bf-card" style={{ marginBottom: 16, overflow: "hidden", borderLeft: `3px solid ${dkReady ? "#2F9E44" : "#E8590C"}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 22px", background: "linear-gradient(135deg,#FFF6F1 0%,#FFFAF8 100%)", borderBottom: "1px solid #F0E2D6" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: "#E8590C", color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{di + 1}</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: -.2, display: "flex", alignItems: "center", gap: 7 }}>Docket {dkNumber}
+                      <span className="pill" style={{ background: "#E7F5FF", color: "#1971C2" }}>PLANNED</span>
+                      {dkReady && <span className="pill" style={{ background: "#EBFBEE", color: "#2F9E44" }}>✓ Ready</span>}
+                    </div>
+                    {(dk.vehicleId || dkProdCount > 0 || dkSvcCount > 0) && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, fontSize: 12, color: "#5B6470" }}>
+                        {dk.vehicleId && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i className="ti ti-truck" style={{ color: "#E8590C", fontSize: 12 }}></i>{dk.vehicleId}</span>}
+                        {dkProdCount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i className="ti ti-package" style={{ color: "#7048E8", fontSize: 12 }}></i>{dkProdCount} product{dkProdCount !== 1 ? 's' : ''}</span>}
+                        {dkSvcCount > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i className="ti ti-tools" style={{ color: "#1971C2", fontSize: 12 }}></i>{dkSvcCount} service{dkSvcCount !== 1 ? 's' : ''}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {f.dockets.length > 1 && <button onClick={() => { const nd = [...f.dockets]; nd.splice(di, 1); setF(prev => ({ ...prev, dockets: nd })); }} style={{ border: "1px solid #E4E8ED", background: "#fff", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: "#E03131", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><i className="ti ti-trash"></i> Remove</button>}
               </div>
-              {!closed && <div style={{padding:"12px 6px 4px"}}>{rows.map(({p,pi})=><ProductRow key={pi} p={p} pi={pi}/>)}</div>}
+
+              <div style={{ padding: 22 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.65fr", gap: 24, marginBottom: 24 }}>
+                  {/* Vehicle */}
+                  <div><label className="lbl">Vehicle <span style={{ color: "#E8590C" }}>*</span></label>
+                    <select className={`fld ${saveAttempted && !dk.vehicleId ? "err" : ""}`} value={dk.vehicleId} onChange={e => setDocket(di, { vehicleId: e.target.value })}>
+                      <option value="">Select vehicle…</option>
+                      {VEHICLE_GROUPS.map(g => (
+                        <optgroup key={g.type} label={g.type}>
+                          {g.ids.map(id => {
+                            const busy = f.date ? vehicleAssignments(id, f.date, isEdit ? f._id : null) : [];
+                            const maint = id === "MH-12-BMD-03"; // Hardcoded maintenance for demo
+                            const tag = maint ? " — maintenance" : (busy.length ? " — booked" : " — available");
+                            return <option key={id} value={id} disabled={maint}>{id}{tag}</option>
+                          })}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {saveAttempted && !dk.vehicleId && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
+                    {conf.length > 0 && <div style={{ fontSize: 12, color: "#7A4F00", background: "#FFF9DB", border: "1px solid #F4D78A", borderRadius: 8, padding: "9px 11px", marginTop: 10, display: "flex", gap: 7, alignItems: "flex-start" }}><i className="ti ti-alert-triangle" style={{ color: "#F08C00", flexShrink: 0, marginTop: 1 }}></i><span>Double-booked with <b>{conf.join(", ")}</b> on this date. Allowed — flagged on board.</span></div>}
+                  </div>
+
+                  {/* Crew */}
+                  <div>
+                    <div style={{ marginBottom: 16 }}><label className="lbl">BMD Operators</label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                        {OPERATORS.map(m => {
+                          const on = dk.operatorIds.includes(m.id);
+                          const leave = onLeave(m.id, f.date);
+                          const busy = f.date ? personAssignments(m.id, f.date, isEdit ? f._id : null) : [];
+                          const dotColor = leave ? "#E03131" : (busy.length ? "#F08C00" : "#2F9E44");
+                          const initl = initials(m.name);
+                          const hue = avatarHue(m.name);
+
+                          if (leave) {
+                            return (
+                              <span key={m.id} title="On leave today — cannot be assigned" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 11px", border: "1px solid #F0D4D4", background: "#FFF5F5", color: "#BBA0A0", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: "not-allowed", textDecoration: "line-through" }}>
+                                <span style={{ width: 22, height: 22, borderRadius: 6, background: "#F5E4E4", color: "#CC9999", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{initl}</span>
+                                {m.name}
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#E03131", fontWeight: 600, background: "#FFF0F0", border: "1px solid #FCBCBC", borderRadius: 6, padding: "3px 8px", marginLeft: -2, whiteSpace: "nowrap" }}><i className="ti ti-beach" style={{ fontSize: 11 }}></i>On leave</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <button key={m.id} className={`chip ${on ? "on" : ""}`} title={busy.length ? `Currently on: ${busy.join(", ")}` : "Available today"} onClick={() => {
+                              const arr = [...dk.operatorIds];
+                              const idx = arr.indexOf(m.id);
+                              if (idx >= 0) arr.splice(idx, 1); else arr.push(m.id);
+                              setDocket(di, { operatorIds: arr });
+                            }}>
+                              <span style={{ width: 22, height: 22, borderRadius: 6, background: on ? "#E8590C" : `hsl(${hue},75%,94%)`, color: on ? "#fff" : `hsl(${hue},75%,38%)`, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{on ? <i className="ti ti-check" style={{ fontSize: 11 }}></i> : initl}</span>
+                              {m.name} <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }}></span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div><label className="lbl">Blaster / Shotfirer</label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                        {SHOTFIRERS.map(m => {
+                          const on = dk.shotfirerIds.includes(m.id);
+                          const busy = f.date ? personAssignments(m.id, f.date, isEdit ? f._id : null) : [];
+                          const dotColor = busy.length ? "#F08C00" : "#2F9E44";
+                          const initl = initials(m.name);
+                          const hue = avatarHue(m.name);
+                          return (
+                            <button key={m.id} className={`chip ${on ? "on" : ""}`} title={busy.length ? `Currently on: ${busy.join(", ")}` : "Available today"} onClick={() => {
+                              const arr = [...dk.shotfirerIds];
+                              const idx = arr.indexOf(m.id);
+                              if (idx >= 0) arr.splice(idx, 1); else arr.push(m.id);
+                              setDocket(di, { shotfirerIds: arr });
+                            }}>
+                              <span style={{ width: 22, height: 22, borderRadius: 6, background: on ? "#E8590C" : `hsl(${hue},75%,94%)`, color: on ? "#fff" : `hsl(${hue},75%,38%)`, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{on ? <i className="ti ti-check" style={{ fontSize: 11 }}></i> : initl}</span>
+                              {m.name} <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }}></span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 14, marginTop: 10, fontSize: 11.5, color: "#5B6470" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2F9E44", display: "inline-block" }}></span>Available</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F08C00", display: "inline-block" }}></span>Booked today</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#E03131", display: "inline-block" }}></span>On leave</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="lbl" style={{ marginBottom: 0 }}>Products</span>
+                    {saveAttempted && !dk.products.some(p => p.materialId && p.plannedQty) && !dk.services.length && <span style={{ fontSize: 11, color: "#E03131", fontWeight: 600, background: "#FFF0F0", border: "1px solid #FCBCBC", borderRadius: 5, padding: "2px 7px" }}>Needs products or services</span>}
+                  </div>
+                  <button className="btn-add" style={{ padding: "6px 11px", fontSize: 12.5 }} onClick={() => setDocket(di, { products: [...dk.products, { materialId: "", plannedQty: "" }] })}><i className="ti ti-plus"></i> Add product</button>
+                </div>
+
+                {!anyProducts && dk.products.length === 1 && !dk.products[0].materialId ? (
+                  renderProductRow(di, dk.products[0], 0)
+                ) : (
+                  <>
+                    {["BULK", "IS&PE"].map(cat => {
+                      const rows = byCat[cat];
+                      if (!rows || !rows.length) return null;
+                      const open = accOpen[cat] !== false;
+                      return (
+                        <div key={cat} style={{ marginBottom: 10 }}>
+                          <div className="acc-head" onClick={() => toggleProductCat(cat)}>
+                            <i className={`ti ti-chevron-${open ? "down" : "right"}`} style={{ color: "#5B6470", fontSize: 13 }}></i>
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: .4, padding: "3px 9px", borderRadius: 6, textTransform: "uppercase", background: cat === "BULK" ? "#EAF4FF" : "#F3EEFF", color: cat === "BULK" ? "#1762A8" : "#6B3FC4" }}>{cat}</span>
+                            <span style={{ fontSize: 12.5, color: "#5B6470", fontWeight: 600 }}>{rows.length} item{rows.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          {open && <div style={{ padding: "10px 4px 4px" }}>{rows.map(r => renderProductRow(di, r.p, r.pi))}</div>}
+                        </div>
+                      );
+                    })}
+                    {dk.products.map((p, pi) => !p.materialId && renderProductRow(di, p, pi))}
+                  </>
+                )}
+
+                {/* Services */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "22px 0 12px" }}>
+                  <span className="lbl" style={{ marginBottom: 0 }}>Services</span>
+                  <button className="btn-add" style={{ padding: "6px 11px", fontSize: 12.5 }} onClick={() => setDocket(di, { services: [...dk.services, { serviceId: "", qty: "" }] })}><i className="ti ti-plus"></i> Add service</button>
+                </div>
+                {!dk.services.length ? (
+                  <div style={{ padding: "14px 16px", background: "#F7F8FA", borderRadius: 9, border: "1px dashed #DDE1E7", display: "flex", alignItems: "center", gap: 12 }}>
+                    <i className="ti ti-tools" style={{ color: "#C8CDD4", fontSize: 22, flexShrink: 0 }}></i>
+                    <div style={{ fontSize: 13, color: "#9AA0A8", lineHeight: 1.5 }}>No services added. Common services include site setup, BMD operation charges, bore tracking, and blast clearance.</div>
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", maxWidth: 700 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #E4E8ED" }}>
+                        {["Service", "Qty", "UoM", ""].map((col, i) => {
+                          const w = ["", "110px", "56px", "42px"][i];
+                          return <th key={col} style={{ textAlign: "left", fontSize: 10.5, color: "#5B6470", fontWeight: 600, textTransform: "uppercase", letterSpacing: .5, padding: `0 8px 8px ${i === 0 ? '0' : ''}`, ...(w ? { width: w } : {}) }}>{col}</th>
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dk.services.map((s, si) => {
+                        const sv = SERVICE_MAP[s.serviceId]; const uom = sv ? sv.uom : "ea";
+                        return (
+                          <tr key={si}>
+                            <td style={{ padding: "6px 8px 6px 0" }}>
+                              <select className="fld" value={s.serviceId} onChange={e => {
+                                const ns = [...dk.services]; ns[si].serviceId = e.target.value; setDocket(di, { services: ns });
+                              }}>
+                                <option value="">Select service…</option>
+                                {SERVICES.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                              </select>
+                            </td>
+                            <td style={{ padding: "6px 8px" }}><input className="fld" type="number" min="1" placeholder="1" value={s.qty || ""} onChange={e => {
+                              const ns = [...dk.services]; ns[si].qty = e.target.value; setDocket(di, { services: ns });
+                            }} /></td>
+                            <td style={{ padding: "6px 8px", fontSize: 13, color: "#5B6470", fontWeight: 600 }}>{uom}</td>
+                            <td style={{ padding: "6px 0" }}><button className="icon-btn" onClick={() => {
+                              const ns = [...dk.services]; ns.splice(si, 1); setDocket(di, { services: ns });
+                            }}><i className="ti ti-x" style={{ fontSize: 13 }}></i></button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+                <label className="lbl" style={{ marginTop: 22 }}>Docket Notes</label>
+                <textarea className="fld" rows={2} placeholder="Notes for this docket…" value={dk.notes} onChange={e => setDocket(di, { notes: e.target.value })} style={{ resize: "vertical", lineHeight: 1.55, maxWidth: 700 }}></textarea>
+              </div>
             </div>
           );
         })}
-        {incomplete.map(({p,pi})=><ProductRow key={"inc"+pi} p={p} pi={pi}/>)}
-
-        {/* SERVICES — single label + table with UoM */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"20px 0 12px"}}>
-          <span style={{fontSize:11.5,color:SLATE,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Services</span>
-          <button onClick={addSvc} style={{...btnAdd,padding:"6px 11px",fontSize:12.5}}><Plus size={14}/> Add service</button>
-        </div>
-        {dk.services.length===0 ? <div style={{fontSize:13,color:SLATE,padding:"2px 0 4px"}}>No services added.</div> : (
-          <table style={{width:"100%",borderCollapse:"collapse",maxWidth:680}}>
-            <thead><tr style={{borderBottom:`1px solid ${LINE}`}}>
-              <th style={{textAlign:"left",fontSize:10.5,color:SLATE,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,padding:"0 8px 8px 0"}}>Service</th>
-              <th style={{width:110,textAlign:"left",fontSize:10.5,color:SLATE,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,padding:"0 8px 8px"}}>Qty</th>
-              <th style={{width:56,textAlign:"left",fontSize:10.5,color:SLATE,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,padding:"0 8px 8px"}}>UoM</th>
-              <th style={{width:42}}></th>
-            </tr></thead>
-            <tbody>
-              {dk.services.map((s,si)=>{ const sv=SERVICE_MAP[s.serviceId]; const uom=sv?sv.uom:"ea";
-                return (
-                  <tr key={si}>
-                    <td style={{padding:"6px 8px 6px 0"}}><select value={s.serviceId} onChange={e=>setSvc(si,{serviceId:e.target.value})} style={selFld}>{SERVICES.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></td>
-                    <td style={{padding:"6px 8px"}}><input type="number" min="1" placeholder="1" value={s.qty} onChange={e=>setSvc(si,{qty:e.target.value})} style={fld}/></td>
-                    <td style={{padding:"6px 8px",fontSize:13,color:SLATE,fontWeight:600}}>{uom}</td>
-                    <td style={{padding:"6px 0"}}><button onClick={()=>rmSvc(si)} style={iconBtn}><X size={15}/></button></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-
-        {/* notes */}
-        <label style={{...lbl,marginTop:20}}>Docket notes</label>
-        <textarea value={dk.notes} onChange={e=>setDocket({notes:e.target.value})} rows={2} placeholder="Notes for this docket…" style={{...fld,maxWidth:680,resize:"vertical"}}/>
       </div>
-      )}
     </div>
   );
 }

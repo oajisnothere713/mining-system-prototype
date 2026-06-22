@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Users, HardHat, Lock, MessageSquare, X } from "lucide-react";
+import { Users, HardHat, Lock, MessageSquare, X, AlertTriangle } from "lucide-react";
+import { personAssignments, CREW_GROUPS_BY_PLANT } from './bookingStore';
 
 /* ============================================================
    CREW PLANNER — set crew availability across the week
@@ -22,40 +23,13 @@ const ST={
 const EDITABLE=["Available","Unavailable","On Long Leave"];
 const PLANTS=[{code:"2010",name:"Nimbahera"},{code:"2025",name:"Panna"},{code:"2040",name:"Muddapur"}];
 
-const GROUPS_BY_PLANT={
-  "2025":[
-    {type:"BMD Operators",hint:"Operate the bulk delivery trucks",members:["Ramesh Patil","Suresh Yadav","Blair Huntingdon","Cas Davide"]},
-    {type:"Blasters / Shotfirers",hint:"Licensed to charge & fire",members:["Mike Sullivan","Dan Brooks"]},
-    {type:"Surveyors",hint:"Survey & mark-out",members:["James Lee","Priya Sharma"]},
-  ],
-  "2010":[
-    {type:"BMD Operators",hint:"Operate the bulk delivery trucks",members:["Vikram Singh","Arjun Mehta"]},
-    {type:"Blasters / Shotfirers",hint:"Licensed to charge & fire",members:["Rahul Verma"]},
-  ],
-  "2040":[
-    {type:"BMD Operators",hint:"Operate the bulk delivery trucks",members:["Karthik Rao","Deepak Nair"]},
-    {type:"Surveyors",hint:"Survey & mark-out",members:["Anjali Reddy"]},
-  ],
-};
 
-const ASSIGN={
-  "2025":{
-    "Ramesh Patil":{"2026-06-02":"BL-2025-041","2026-06-03":"BL-2025-043","2026-06-04":"BL-2025-045","2026-06-05":"BL-2025-045"},
-    "Suresh Yadav":{"2026-06-02":"BL-2025-041","2026-06-04":"BL-2025-045"},
-    "Blair Huntingdon":{"2026-06-02":"BL-2025-042","2026-06-04":"BL-2025-046"},
-    "Cas Davide":{"2026-06-03":"BL-2025-044","2026-06-05":"BL-2025-048"},
-    "Mike Sullivan":{"2026-06-02":"BL-2025-041","2026-06-03":"BL-2025-043","2026-06-04":"BL-2025-045","2026-06-05":"BL-2025-045"},
-    "Dan Brooks":{"2026-06-02":"BL-2025-042","2026-06-03":"BL-2025-044","2026-06-04":"BL-2025-046"},
-    "James Lee":{"2026-06-04":"BL-2025-052"},"Priya Sharma":{},
-  },
-  "2010":{"Vikram Singh":{"2026-06-03":"BL-2010-012"},"Arjun Mehta":{},"Rahul Verma":{"2026-06-03":"BL-2010-012"}},
-  "2040":{"Karthik Rao":{"2026-06-02":"BL-2040-008","2026-06-04":"BL-2040-009"},"Deepak Nair":{},"Anjali Reddy":{"2026-06-04":"BL-2040-009"}},
-};
 const OFFSHIFT={
   "2025":{"Ramesh Patil":["2026-06-07","2026-06-08"],"Suresh Yadav":["2026-06-07","2026-06-08"],"Blair Huntingdon":["2026-06-03","2026-06-08"],"Cas Davide":["2026-06-02","2026-06-08"],"Mike Sullivan":["2026-06-07","2026-06-08"],"Dan Brooks":["2026-06-06","2026-06-07"],"James Lee":["2026-06-07","2026-06-08"],"Priya Sharma":["2026-06-07","2026-06-08"]},
   "2010":{"Vikram Singh":["2026-06-07","2026-06-08"],"Arjun Mehta":["2026-06-07","2026-06-08"],"Rahul Verma":["2026-06-06","2026-06-07"]},
   "2040":{"Karthik Rao":["2026-06-07","2026-06-08"],"Deepak Nair":["2026-06-07","2026-06-08"],"Anjali Reddy":["2026-06-07","2026-06-08"]},
 };
+
 const INITIAL_OVR={
   "2025":{
     "Cas Davide":{"2026-06-04":{status:"Unavailable",comment:"Medical appointment — back by noon"}},
@@ -86,9 +60,10 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
   }, [plant]);
 
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
-  const groups=GROUPS_BY_PLANT[plant];
+  const groups = (CREW_GROUPS_BY_PLANT[plant] || []).map(g => ({ type: g.role, hint: g.hint, members: g.members }));
   const cellState=(person,dk)=>{
-    if(ASSIGN[plant][person]&&ASSIGN[plant][person][dk])return{status:"Assigned",ref:ASSIGN[plant][person][dk],locked:true};
+    const assignedBlast = personAssignments(person, dk)[0];
+    if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
     if(ovr[plant]?.[person]?.[dk])return{status:ovr[plant][person][dk].status,comment:ovr[plant][person][dk].comment,locked:false};
     if(OFFSHIFT[plant][person]&&OFFSHIFT[plant][person].includes(dk))return{status:"Off-shift",locked:true};
     return{status:"Available",locked:false};
@@ -152,22 +127,27 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
                   <HardHat size={16} style={{color:ORANGE}}/><span style={{fontSize:13.5,fontWeight:700,color:"#fff"}}>{g.type}</span><span style={{fontSize:11.5,color:"#A8AEB8"}}>{g.hint}</span>
                 </div>
                 {g.members.map(p=>(
-                  <div key={p} style={{display:"grid",gridTemplateColumns:`230px repeat(${WEEK.length},1fr)`,borderBottom:`1px solid ${LINE}`,minHeight:58}}>
+                  <div key={p.id} style={{display:"grid",gridTemplateColumns:`230px repeat(${WEEK.length},1fr)`,borderBottom:`1px solid ${LINE}`,minHeight:58}}>
                     <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderRight:`3px solid ${LINE}`,background:FLEETCOL}}>
-                      <span style={{width:32,height:32,borderRadius:"50%",background:"#C7CFDA",color:"#3A4350",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{initials(p)}</span>
-                      <span style={{fontSize:13,fontWeight:600}}>{p}</span>
+                      <span style={{width:32,height:32,borderRadius:"50%",background:"#C7CFDA",color:"#3A4350",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{initials(p.name)}</span>
+                      <span style={{fontSize:13,fontWeight:600}}>{p.name}</span>
                     </div>
                     {WEEK.map(d=>{
-                      const cs=cellState(p,d.k);const s=ST[cs.status];
+                      const cs=cellState(p.id,d.k);const s=ST[cs.status];
+                      const allAssignments = personAssignments(p.id, d.k);
+                      const isDoubleBooked = cs.status==="Assigned" && new Set(allAssignments).size > 1;
+                      const tooltipText = isDoubleBooked ? `⚠ Double-booked!\nAssigned to: ${[...new Set(allAssignments)].join(', ')}` : '';
                       return(
-                        <div key={d.k} onClick={()=>setPop({person:p,dateKey:d.k})} style={{borderLeft:`1px solid ${LINE}`,padding:6,cursor:cs.locked?"default":"pointer",background:d.today?"#FFFBF7":"transparent",display:"flex"}}>
-                          <div style={{flex:1,borderRadius:7,background:s.bg,border:`1px solid ${s.dot}33`,padding:"6px 8px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2}}>
+                        <div key={d.k} title={isDoubleBooked ? tooltipText : ""} onClick={()=>setPop({person:p.id,personObj:p,dateKey:d.k})} style={{borderLeft:`1px solid ${LINE}`,padding:6,cursor:cs.locked?"default":"pointer",background:d.today?"#FFFBF7":"transparent",display:"flex"}}>
+                          <div style={{flex:1,borderRadius:7,background:isDoubleBooked?"#FFF0F0":s.bg,border:`1px solid ${isDoubleBooked?"#E03131":s.dot}33`,padding:"6px 8px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2}}>
                             <div style={{display:"flex",alignItems:"center",gap:5}}>
-                              <span style={{width:7,height:7,borderRadius:"50%",background:s.dot}}/>
-                              <span style={{fontSize:11,fontWeight:700,color:s.fg}}>{cs.status==="Assigned"?cs.ref:cs.status}</span>
-                              {cs.locked&&<Lock size={10} style={{color:s.fg,marginLeft:"auto",opacity:.6}}/>}
+                              <span style={{width:7,height:7,borderRadius:"50%",background:isDoubleBooked?"#E03131":s.dot}}/>
+                              <span style={{fontSize:11,fontWeight:700,color:isDoubleBooked?"#E03131":s.fg}}>{cs.status==="Assigned"?cs.ref:cs.status}</span>
+                              {isDoubleBooked&&<span title={tooltipText} style={{marginLeft:"auto",cursor:"help",display:"flex",alignItems:"center"}}><AlertTriangle size={13} style={{color:"#E03131"}}/></span>}
+                              {!isDoubleBooked&&cs.locked&&<Lock size={10} style={{color:s.fg,marginLeft:"auto",opacity:.6}}/>}
                             </div>
-                            {cs.comment&&<div title={cs.comment} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:s.fg,opacity:.85}}><MessageSquare size={11}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{cs.comment}</span></div>}
+                            {isDoubleBooked&&<div style={{fontSize:9.5,color:"#E03131",fontWeight:600}}>Double-booked</div>}
+                            {cs.comment&&!isDoubleBooked&&<div title={cs.comment} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:s.fg,opacity:.85}}><MessageSquare size={11}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{cs.comment}</span></div>}
                           </div>
                         </div>
                       );
@@ -194,10 +174,20 @@ function CellPopover({week,pop,cellState,onClose,onSave}){
   const[comment,setComment]=useState(cs.comment||"");
 
   if(cs.locked){
-    const msg=cs.status==="Assigned"?`This day is committed to ${cs.ref}. Edit the booking to release it.`:"Off-shift comes from the ERP shift roster and can't be changed here.";
+    const allAssignments = personAssignments(pop.person, pop.dateKey);
+    const isDoubleBooked = cs.status==="Assigned" && new Set(allAssignments).size > 1;
+
     return(<Overlay onClose={onClose}><div style={popStyle(300)}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><Lock size={16} style={{color:SLATE}}/><span style={{fontWeight:700,fontSize:14}}>{cs.status}</span></div>
-      <div style={{fontSize:13,color:SLATE,lineHeight:1.5}}>{msg}</div>
+      {isDoubleBooked ? (
+        <div style={{fontSize:13,color:"#E03131",lineHeight:1.5,fontWeight:600}}>
+          {Array.from(new Set(allAssignments)).join(" and ")} are double booked on this date.
+        </div>
+      ) : (
+        <div style={{fontSize:13,color:SLATE,lineHeight:1.5}}>
+          {cs.status==="Off-shift" ? "This person is off-shift." : `This person is committed to ${cs.ref}. Edit the booking to release them.`}
+        </div>
+      )}
       <button onClick={onClose} style={{marginTop:14,width:"100%",padding:9,border:`1px solid ${LINE}`,background:"#fff",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Close</button>
     </div></Overlay>);
   }

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Truck, Lock, MessageSquare } from "lucide-react";
+import { Truck, Lock, MessageSquare, AlertTriangle } from "lucide-react";
+import { vehicleAssignments } from './bookingStore';
 
 /* ============================================================
    FLEET PLANNER — set vehicle status & maintenance across week
@@ -21,30 +22,21 @@ const PLANTS=[{code:"2010",name:"Nimbahera"},{code:"2025",name:"Panna"},{code:"2
 
 const GROUPS_BY_PLANT={
   "2025":[
-    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",members:["MH-12-BMD-01","MH-12-BMD-02","MH-12-BMD-03"]},
-    {type:"Blast Crew Vehicles",hint:"Carries blaster / shotfirer crew",members:["MH-12-BCV-01","MH-12-BCV-02"]},
-    {type:"Support Trucks",hint:"Survey, mark-out & ancillary support",members:["MH-12-SVY-01","MH-12-SPT-01"]},
+    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",img:"/images/bmd_truck.png",members:["MH-12-BMD-01","MH-12-BMD-02","MH-12-BMD-03"]},
+    {type:"Blast Crew Vehicles",hint:"Carries blaster / shotfirer crew",img:"/images/crew_vehicle.png",members:["MH-12-BCV-01","MH-12-BCV-02"]},
+    {type:"Support Trucks",hint:"Survey, mark-out & ancillary support",img:"/images/support_truck.png",members:["MH-12-SVY-01","MH-12-SPT-01"]},
   ],
   "2010":[
-    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",members:["MH-14-BMD-01","MH-14-BMD-02"]},
-    {type:"Support Trucks",hint:"Survey, mark-out & ancillary support",members:["MH-14-SPT-01"]},
+    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",img:"/images/bmd_truck.png",members:["MH-14-BMD-01","MH-14-BMD-02"]},
+    {type:"Support Trucks",hint:"Survey, mark-out & ancillary support",img:"/images/support_truck.png",members:["MH-14-SPT-01"]},
   ],
   "2040":[
-    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",members:["KA-25-BMD-01","KA-25-BMD-02"]},
-    {type:"Blast Crew Vehicles",hint:"Carries blaster / shotfirer crew",members:["KA-25-BCV-01"]},
+    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",img:"/images/bmd_truck.png",members:["KA-25-BMD-01","KA-25-BMD-02"]},
+    {type:"Blast Crew Vehicles",hint:"Carries blaster / shotfirer crew",img:"/images/crew_vehicle.png",members:["KA-25-BCV-01"]},
   ],
 };
 
-const ASSIGN={
-  "2025":{
-    "MH-12-BMD-01":{"2026-06-02":"BL-2025-041","2026-06-03":"BL-2025-043","2026-06-04":"BL-2025-045","2026-06-05":"BL-2025-045"},
-    "MH-12-BMD-02":{"2026-06-02":"BL-2025-042","2026-06-03":"BL-2025-044","2026-06-04":"BL-2025-046","2026-06-05":"BL-2025-048"},
-    "MH-12-BCV-01":{"2026-06-04":"BL-2025-049","2026-06-05":"BL-2025-049b"},
-    "MH-12-SVY-01":{"2026-06-04":"BL-2025-052"},
-  },
-  "2010":{"MH-14-BMD-01":{"2026-06-03":"BL-2010-012"}},
-  "2040":{"KA-25-BMD-01":{"2026-06-02":"BL-2040-008","2026-06-04":"BL-2040-009"},"KA-25-BCV-01":{"2026-06-04":"BL-2040-009"}},
-};
+// ASSIGN logic is now computed dynamically via vehicleAssignments
 const INITIAL_OVR={
   "2025":{"MH-12-BMD-03":Object.fromEntries(["2026-06-02","2026-06-03","2026-06-04","2026-06-05"].map(d=>[d,{status:"Maintenance",comment:"Pump seal replacement"}]))},
   "2010":{},"2040":{"KA-25-BMD-02":{"2026-06-03":{status:"Maintenance",comment:"Scheduled service"}}},
@@ -70,7 +62,8 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
   const groups=GROUPS_BY_PLANT[plant];
   const cellState=(v,dk)=>{
-    if(ASSIGN[plant][v]&&ASSIGN[plant][v][dk])return{status:"Assigned",ref:ASSIGN[plant][v][dk],locked:true};
+    const assignedBlast = vehicleAssignments(v, dk)[0];
+    if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
     if(ovr[plant]?.[v]?.[dk])return{status:ovr[plant][v][dk].status,comment:ovr[plant][v][dk].comment,locked:false};
     return{status:"Available",locked:false};
   };
@@ -114,7 +107,7 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
         <div style={{overflowX:"auto"}}>
           <div style={{minWidth:workingWeek?720:900}}>
             <div style={{display:"grid",gridTemplateColumns:`230px repeat(${WEEK.length},1fr)`,borderBottom:"2px solid #D6DBE2"}}>
-              <div style={{padding:"14px 16px",fontSize:12.5,fontWeight:800,textTransform:"uppercase",letterSpacing:.6,background:COLHEAD,borderRight:`3px solid ${LINE}`,display:"flex",alignItems:"center",gap:8}}><Truck size={16} style={{color:ORANGE}}/> Fleet</div>
+              <div style={{padding:"14px 16px",fontSize:12.5,fontWeight:800,textTransform:"uppercase",letterSpacing:.6,background:COLHEAD,borderRight:`3px solid ${LINE}`,display:"flex",alignItems:"center",gap:8}}><img src="/images/bmd_truck.png" style={{height: 16, width: 24, objectFit: 'contain'}} alt="Fleet" /> Fleet</div>
               {WEEK.map(d=>(
                 <div key={d.k} style={{padding:"11px 8px",textAlign:"center",borderLeft:`1px solid ${LINE}`,background:d.today?ORANGE_SOFT:COLHEAD}}>
                   <div style={{fontSize:11,color:d.today?ORANGE:SLATE,fontWeight:700,textTransform:"uppercase"}}>{d.dow}</div>
@@ -125,25 +118,32 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
             {groups.map(g=>(
               <div key={g.type}>
                 <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",background:"#2B2F36",borderLeft:`4px solid ${ORANGE}`}}>
-                  <Truck size={16} style={{color:ORANGE}}/><span style={{fontSize:13.5,fontWeight:700,color:"#fff"}}>{g.type}</span><span style={{fontSize:11.5,color:"#A8AEB8"}}>{g.hint}</span>
+                  {g.img ? <img src={g.img} style={{height: 18, width: 28, objectFit: 'contain'}} alt={g.type} /> : <Truck size={16} style={{color:ORANGE}}/>}<span style={{fontSize:13.5,fontWeight:700,color:"#fff"}}>{g.type}</span><span style={{fontSize:11.5,color:"#A8AEB8"}}>{g.hint}</span>
                 </div>
                 {g.members.map(v=>(
                   <div key={v} style={{display:"grid",gridTemplateColumns:`230px repeat(${WEEK.length},1fr)`,borderBottom:`1px solid ${LINE}`,minHeight:58}}>
                     <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:10,borderRight:`3px solid ${LINE}`,background:FLEETCOL}}>
-                      <div style={{width:32,height:32,borderRadius:8,background:ORANGE_SOFT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Truck size={17} style={{color:ORANGE}}/></div>
+                      <div style={{width:40,height:28,borderRadius:6,background:ORANGE_SOFT,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden",border:`1px solid ${ORANGE}44`}}>
+                        {g.img ? <img src={g.img} style={{width:"90%",height:"90%",objectFit:"contain"}} alt={g.type} /> : <Truck size={17} style={{color:ORANGE}}/>}
+                      </div>
                       <span style={{fontSize:13,fontWeight:700}}>{v}</span>
                     </div>
                     {WEEK.map(d=>{
                       const cs=cellState(v,d.k);const s=ST[cs.status];
+                      const allAssignments = vehicleAssignments(v, d.k);
+                      const isDoubleBooked = cs.status==="Assigned" && new Set(allAssignments).size > 1;
+                      const tooltipText = isDoubleBooked ? `⚠ Double-booked!\nAssigned to: ${[...new Set(allAssignments)].join(', ')}` : '';
                       return(
-                        <div key={d.k} onClick={()=>setPop({vehicle:v,dateKey:d.k})} style={{borderLeft:`1px solid ${LINE}`,padding:6,cursor:cs.locked?"default":"pointer",background:d.today?"#FFFBF7":"transparent",display:"flex"}}>
-                          <div style={{flex:1,borderRadius:7,background:s.bg,border:`1px solid ${s.dot}33`,padding:"6px 8px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2}}>
+                        <div key={d.k} title={isDoubleBooked ? tooltipText : ""} onClick={()=>setPop({vehicle:v,dateKey:d.k})} style={{borderLeft:`1px solid ${LINE}`,padding:6,cursor:cs.locked?"default":"pointer",background:d.today?"#FFFBF7":"transparent",display:"flex"}}>
+                          <div style={{flex:1,borderRadius:7,background:isDoubleBooked?"#FFF0F0":s.bg,border:`1px solid ${isDoubleBooked?"#E03131":s.dot}33`,padding:"6px 8px",display:"flex",flexDirection:"column",justifyContent:"center",gap:2}}>
                             <div style={{display:"flex",alignItems:"center",gap:5}}>
-                              <span style={{width:7,height:7,borderRadius:"50%",background:s.dot}}/>
-                              <span style={{fontSize:11,fontWeight:700,color:s.fg}}>{cs.status==="Assigned"?cs.ref:cs.status}</span>
-                              {cs.locked&&<Lock size={10} style={{color:s.fg,marginLeft:"auto",opacity:.6}}/>}
+                              <span style={{width:7,height:7,borderRadius:"50%",background:isDoubleBooked?"#E03131":s.dot}}/>
+                              <span style={{fontSize:11,fontWeight:700,color:isDoubleBooked?"#E03131":s.fg}}>{cs.status==="Assigned"?cs.ref:cs.status}</span>
+                              {isDoubleBooked&&<span title={tooltipText} style={{marginLeft:"auto",cursor:"help",display:"flex",alignItems:"center"}}><AlertTriangle size={13} style={{color:"#E03131"}}/></span>}
+                              {!isDoubleBooked&&cs.locked&&<Lock size={10} style={{color:s.fg,marginLeft:"auto",opacity:.6}}/>}
                             </div>
-                            {cs.comment&&<div title={cs.comment} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:s.fg,opacity:.85}}><MessageSquare size={11}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{cs.comment}</span></div>}
+                            {isDoubleBooked&&<div style={{fontSize:9.5,color:"#E03131",fontWeight:600}}>Double-booked</div>}
+                            {cs.comment&&!isDoubleBooked&&<div title={cs.comment} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:s.fg,opacity:.85}}><MessageSquare size={11}/><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}}>{cs.comment}</span></div>}
                           </div>
                         </div>
                       );
@@ -169,9 +169,18 @@ function CellPopover({week,pop,cellState,onClose,onSave}){
   const[toKey,setToKey]=useState(pop.dateKey);
   const[comment,setComment]=useState(cs.comment||"");
   if(cs.locked){
+    const allAssignments = vehicleAssignments(pop.vehicle, pop.dateKey);
+    const isDoubleBooked = cs.status==="Assigned" && new Set(allAssignments).size > 1;
+
     return(<Overlay onClose={onClose}><div style={popStyle(300)}>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><Lock size={16} style={{color:SLATE}}/><span style={{fontWeight:700,fontSize:14}}>Assigned</span></div>
-      <div style={{fontSize:13,color:SLATE,lineHeight:1.5}}>This vehicle is committed to {cs.ref}. Edit the booking to release it.</div>
+      {isDoubleBooked ? (
+        <div style={{fontSize:13,color:"#E03131",lineHeight:1.5,fontWeight:600}}>
+          {Array.from(new Set(allAssignments)).join(" and ")} are double booked on this date.
+        </div>
+      ) : (
+        <div style={{fontSize:13,color:SLATE,lineHeight:1.5}}>This vehicle is committed to {cs.ref}. Edit the booking to release it.</div>
+      )}
       <button onClick={onClose} style={{marginTop:14,width:"100%",padding:9,border:`1px solid ${LINE}`,background:"#fff",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Close</button>
     </div></Overlay>);
   }
