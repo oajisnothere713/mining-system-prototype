@@ -169,12 +169,54 @@ export default function SchedulePage() {
   const B = React.useMemo(() => {
     const raw = getBookings().filter(b => b.plantCode === plantCode);
     const flattened = [];
+
+    const generateDates = (b) => {
+      if (b.bookingType !== "recurring" || !b.recurrence) return [b.date];
+      const dates = [];
+      let currentDate = new Date(b.date);
+      const freq = b.recurrence.frequency || "daily";
+      const maxOccurrences = b.recurrence.occurrences || 365;
+      const endDateStr = b.recurrence.endDate;
+      const workingDaysOnly = b.recurrence.workingDaysOnly;
+
+      let occurrences = 0;
+      let loopCount = 0;
+      
+      while (occurrences < maxOccurrences && loopCount < 1000) {
+        loopCount++;
+        const currentStr = currentDate.toISOString().split('T')[0];
+        
+        if (endDateStr && currentStr > endDateStr) {
+          break;
+        }
+
+        const dayOfWeek = currentDate.getDay(); // 0 = Sun, 6 = Sat
+        let isValidDay = true;
+        if (workingDaysOnly && (dayOfWeek === 0 || dayOfWeek === 6)) {
+           isValidDay = false;
+        }
+
+        if (isValidDay) {
+          dates.push(currentStr);
+          occurrences++;
+        }
+
+        if (freq === 'weekly') {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else { 
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
+      return dates.length > 0 ? dates : [b.date];
+    };
+
     raw.forEach(b => {
+      const datesToRender = generateDates(b);
+      
       (b.deliveryDockets || []).forEach(dk => {
         const cParts = (b.customerName || b.customerId || "").split(" ");
-        flattened.push({
-          id: b.blastNumber,
-          date: b.date,
+        const baseItem = {
+          id: b.blastNumber, // Shared ID for the linked series
           time: b.startTime,
           vehicle: dk.vehicleId,
           customer: cParts.length > 1 ? cParts[0] + " " + cParts[1] : cParts[0],
@@ -195,6 +237,10 @@ export default function SchedulePage() {
           status: b.status || dk.status || "Planned",
           multiDay: b.bookingType === "multi" ? { from: b.date, to: b.endDate } : null,
           recurrence: b.bookingType === "recurring" ? (b.recurrence?.frequency || b.recFreq) : null
+        };
+
+        datesToRender.forEach(d => {
+           flattened.push({ ...baseItem, date: d });
         });
       });
     });
