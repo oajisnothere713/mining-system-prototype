@@ -183,7 +183,7 @@ export default function InboundDeliveryPage() {
             </tr>
           </thead>
           <tbody>
-            {(loading || syncing) && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
+            {(loading || syncing) && Array.from({ length: 15 }).map((_, i) => <SkeletonRow key={`sk-${i}`} />)}
             {!(loading || syncing) && filtered.map((d) => (
               <tr key={d.id} onClick={() => navigate(`/deliveries/${d.id}`)}>
                 <td className="ibd-id">{d.id}</td>

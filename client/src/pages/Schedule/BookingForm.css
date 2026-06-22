@@ -21,16 +21,6 @@
 .fld:focus { border-color: #E8590C; box-shadow: 0 0 0 3px rgba(232,89,12,.1); }
 .fld.err { border-color: #E03131 !important; box-shadow: 0 0 0 3px rgba(224,49,49,.1) !important; }
 
-select.fld {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B6470' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 11px center;
-  padding-right: 34px;
-  cursor: pointer;
-}
-select.fld:disabled { background-color: #F5F6F8; color: #A4ABB4; cursor: not-allowed; }
 
 .chip {
   padding: 7px 12px;
