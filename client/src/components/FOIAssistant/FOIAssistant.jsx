@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Minimize2, Loader2, Send, CheckCircle2, Package, RefreshCw, Zap, Lightbulb } from 'lucide-react';
 import { aiService } from '../../services/aiService/aiService';
 import { usePlant } from '../../context/PlantContext/PlantContext';
+import { getDeliveries, syncERP } from '../../services/deliveryService/deliveryService';
+import { buildStock } from '../../utils/stockCalculator/stockCalculator';
+import { LOW_PCT } from '../../utils/constants/constants';
 import './FOIAssistant.css';
 
 const SUGGESTED = [
@@ -120,16 +123,83 @@ export default function FOIAssistant({ isOpen, onClose, onAction }) {
     setLoading(true);
     
     try {
-      const history = messages.map(m => ({ role: m.role, content: m.text }));
-      const newMessages = [...history, { role: "user", content: q }];
+      let displayText = "";
+      let actionObj = null;
+      let handled = false;
+
+      // 1. "What IBDs are in transit for this plant?"
+      if (q === "What IBDs are in transit for this plant?") {
+        const deliveries = await getDeliveries(selectedPlant.code);
+        const transit = deliveries.filter(d => d.plant === selectedPlant.code && d.state === 'in_transit' && !d.hidden);
+        if (transit.length === 0) {
+          displayText = "There are currently no inbound deliveries in transit for this plant.";
+        } else {
+          displayText = `There are ${transit.length} deliveries in transit:\n` + transit.map(d => `- ${d.id} (${d.supplier})`).join("\n");
+        }
+        handled = true;
+      }
+      // 2. "Show me all deliveries pending PGR"
+      else if (q === "Show me all deliveries pending PGR") {
+        const deliveries = await getDeliveries(selectedPlant.code);
+        const pending = deliveries.filter(d => d.plant === selectedPlant.code && d.state === 'physical_pending' && !d.hidden);
+        if (pending.length === 0) {
+          displayText = "There are no deliveries physically pending PGR on the lot.";
+        } else {
+          displayText = `There are ${pending.length} deliveries physically pending PGR:\n` + pending.map(d => `- ${d.id} (${d.supplier})`).join("\n");
+        }
+        handled = true;
+      }
+      // 3. "What is the current ANE stock?"
+      else if (q === "What is the current ANE stock?") {
+        const deliveries = await getDeliveries(selectedPlant.code);
+        // Force the date to our mock prototype active date if we are testing from a past baseline
+        const targetDate = "2026-06-22"; 
+        const computed = buildStock(deliveries, selectedPlant.code, targetDate);
+        const todayLedger = computed[targetDate] || [];
+        const ane = todayLedger.find(m => m.material.includes("Ammonium Nitrate Emulsion"));
+        if (!ane) {
+           displayText = "I could not find a stock ledger entry for ANE.";
+        } else {
+           displayText = `The current stock for Ammonium Nitrate Emulsion (ANE) is **${ane.closing} ${ane.uom}**.\n\nOpening: ${ane.opening}\nInbound: ${ane.pgrC + ane.pgrP}\nCustomer Delivery: ${ane.cd}`;
+        }
+        handled = true;
+      }
+      // 4. "Which materials are running low?"
+      else if (q === "Which materials are running low?") {
+        const deliveries = await getDeliveries(selectedPlant.code);
+        const targetDate = "2026-06-22"; 
+        const computed = buildStock(deliveries, selectedPlant.code, targetDate);
+        const todayLedger = computed[targetDate] || [];
+        const low = todayLedger.filter(m => m.capacity > 0 && m.closing <= (m.capacity * LOW_PCT));
+        if (low.length === 0) {
+          displayText = "All materials are currently above the 15% minimum threshold. Nothing is running low!";
+        } else {
+          displayText = `The following materials are running low (below ${LOW_PCT * 100}% capacity):\n` + low.map(m => `- **${m.material}**: ${m.closing} / ${m.capacity} ${m.uom}`).join("\n");
+        }
+        handled = true;
+      }
+      // 5. "Sync ERP for this plant"
+      else if (q === "Sync ERP for this plant") {
+        await syncERP(selectedPlant.code);
+        displayText = "I have successfully requested an ERP sync for this plant. The delivery states have been updated.";
+        actionObj = { action: "sync_erp" };
+        handled = true;
+      }
+
+      if (!handled) {
+        const history = messages.map(m => ({ role: m.role, content: m.text }));
+        const newMessages = [...history, { role: "user", content: q }];
+        
+        const response = await aiService.chatWithAI(newMessages, selectedPlant.code);
+        const rawText = response.content?.[0]?.text || "Sorry, I couldn't process that.";
+        const { displayText: dt, action: a } = parseLLMResponse(rawText);
+        displayText = dt;
+        actionObj = a;
+      }
       
-      const response = await aiService.chatWithAI(newMessages, selectedPlant.code);
-      const rawText = response.content?.[0]?.text || "Sorry, I couldn't process that.";
-      const { displayText, action } = parseLLMResponse(rawText);
-      
-      setMessages(m => [...m, { role: "assistant", text: displayText, action }]);
-      if (action && onAction) {
-        onAction(action);
+      setMessages(m => [...m, { role: "assistant", text: displayText, action: actionObj }]);
+      if (actionObj && onAction) {
+        onAction(actionObj);
       }
     } catch (e) {
       setMessages(m => [...m, { role: "assistant", text: `Error: ${e.message}`, action: null }]);
