@@ -111,6 +111,13 @@ const WeekPicker = ({ currentBase, onChange }) => {
   )
 }
 
+const getMonday = (d) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.setDate(diff));
+};
+
 export default function SchedulePage() {
   const [tab, setTab] = useState("Schedule");
   const [workingWeek, setWorkingWeek] = useState(true);
@@ -118,7 +125,7 @@ export default function SchedulePage() {
   const [mode, setMode] = useState("fleet");
   const [collapsed, setCollapsed] = useState({});
   const [activePanel, setActivePanel] = useState(null);
-  const [baseDate, setBaseDate] = useState(new Date());
+  const [baseDate, setBaseDate] = useState(getMonday(new Date()));
   const [showWeekPicker, setShowWeekPicker] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingBookingId, setEditingBookingId] = useState(null);
@@ -388,11 +395,14 @@ export default function SchedulePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <i className="ti ti-users" style={{ fontSize: 12, color: SL }}></i>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                {pp.slice(0, 3).map((p, i) => (
-                  <span key={i} title={p} style={{ width: 19, height: 19, borderRadius: '50%', background: i % 2 ? "#D8DEE6" : "#C7CFDA", color: "#3A4350", fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${WT}`, marginLeft: i ? -5 : 0 }}>
-                    {initStr(p)}
-                  </span>
-                ))}
+                {pp.slice(0, 3).map((p, i) => {
+                  const name = CREW_MAP[p] ? CREW_MAP[p].name : p;
+                  return (
+                    <span key={i} title={name} style={{ width: 19, height: 19, borderRadius: '50%', background: i % 2 ? "#D8DEE6" : "#C7CFDA", color: "#3A4350", fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${WT}`, marginLeft: i ? -5 : 0 }}>
+                      {initStr(name)}
+                    </span>
+                  );
+                })}
                 {pp.length > 3 && <span style={{ fontSize: 9.5, color: SL, marginLeft: 4 }}>+{pp.length - 3}</span>}
               </div>
             </div>
@@ -411,7 +421,10 @@ export default function SchedulePage() {
     if (!b) return null;
     const s = STATUS[b.status] || STATUS["Planned"];
     const ci = ORDER.indexOf(b.status);
-    const pl = [...(b.operators || []).map(p => ({ n: p, r: "BMD Operator" })), ...(b.crew || []).map(p => ({ n: p, r: "Blaster / Shotfirer" }))];
+    const pl = [
+      ...(b.operators || []).map(p => ({ n: CREW_MAP[p] ? CREW_MAP[p].name : p, r: "BMD Operator" })), 
+      ...(b.crew || []).map(p => ({ n: CREW_MAP[p] ? CREW_MAP[p].name : p, r: "Blaster / Shotfirer" }))
+    ];
 
     const btnBase = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 16px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' };
     const gb = { ...btnBase, background: '#fff', border: `1px solid ${LN}`, color: INK };
@@ -652,7 +665,7 @@ export default function SchedulePage() {
             )}
           </div>
           <button onClick={() => setBaseDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + 7); return nd; })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${LN}`, background: WT, cursor: 'pointer', color: SL }}><i className="ti ti-chevron-right"></i></button>
-          <button onClick={() => setBaseDate(new Date())} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Today</button>
+          <button onClick={() => setBaseDate(getMonday(new Date()))} style={{ height: 36, padding: '0 14px', borderRadius: 9, border: `1px solid ${O}`, background: OS, fontWeight: 600, fontSize: 13.5, color: O, cursor: 'pointer' }}>Current Week</button>
         </div>
       </div>
 
@@ -802,9 +815,9 @@ export default function SchedulePage() {
           </div>
         </div>
       ) : tab === "Staff Availability" ? (
-        <CrewPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} />
+        <CrewPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} refreshKey={refreshKey} />
       ) : tab === "Vehicle Availability" ? (
-        <FleetPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} />
+        <FleetPlanner plant={plantCode} workingWeek={workingWeek} fullWeek={fullWeek} refreshKey={refreshKey} />
       ) : null}
 
       {activePanel && <Panel b={activePanel} onClose={() => setActivePanel(null)} />}

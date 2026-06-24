@@ -26,21 +26,22 @@ const PLANTS=[{code:"2010",name:"Nimbahera"},{code:"2025",name:"Panna"},{code:"2
 
 const OFFSHIFT={
   "2025":{"Ramesh Patil":["2026-06-07","2026-06-08"],"Suresh Yadav":["2026-06-07","2026-06-08"],"Blair Huntingdon":["2026-06-03","2026-06-08"],"Cas Davide":["2026-06-02","2026-06-08"],"Mike Sullivan":["2026-06-07","2026-06-08"],"Dan Brooks":["2026-06-06","2026-06-07"],"James Lee":["2026-06-07","2026-06-08"],"Priya Sharma":["2026-06-07","2026-06-08"]},
-  "2010":{"Vikram Singh":["2026-06-07","2026-06-08"],"Arjun Mehta":["2026-06-07","2026-06-08"],"Rahul Verma":["2026-06-06","2026-06-07"]},
-  "2040":{"Karthik Rao":["2026-06-07","2026-06-08"],"Deepak Nair":["2026-06-07","2026-06-08"],"Anjali Reddy":["2026-06-07","2026-06-08"]},
+  "2025":{"EMP-2025-01":["2026-06-07","2026-06-08"],"EMP-2025-02":["2026-06-07","2026-06-08"],"EMP-2025-03":["2026-06-03","2026-06-08"],"EMP-2025-04":["2026-06-02","2026-06-08"],"EMP-2025-05":["2026-06-07","2026-06-08"],"EMP-2025-06":["2026-06-06","2026-06-07"],"EMP-2025-07":["2026-06-07","2026-06-08"],"EMP-2025-08":["2026-06-07","2026-06-08"]},
+  "2010":{"EMP-2010-01":["2026-06-07","2026-06-08"],"EMP-2010-02":["2026-06-07","2026-06-08"],"EMP-2010-03":["2026-06-06","2026-06-07"]},
+  "2040":{"EMP-2040-01":["2026-06-07","2026-06-08"],"EMP-2040-02":["2026-06-07","2026-06-08"],"EMP-2040-03":["2026-06-07","2026-06-08"]},
 };
 
 const INITIAL_OVR={
   "2025":{
-    "Cas Davide":{"2026-06-04":{status:"Unavailable",comment:"Medical appointment — back by noon"}},
-    "Priya Sharma":Object.fromEntries(["2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06"].map(d=>[d,{status:"On Long Leave",comment:"Maternity leave — returns Aug 2026"}])),
+    "EMP-2025-04":{"2026-06-04":{status:"Unavailable",comment:"Medical appointment - back by noon"}},
+    "EMP-2025-08":Object.fromEntries(["2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06"].map(d=>[d,{status:"On Long Leave",comment:"Maternity leave - returns Aug 2026"}])),
   },
-  "2010":{},"2040":{"Deepak Nair":{"2026-06-05":{status:"Unavailable",comment:"Training day"}}},
+  "2010":{},"2040":{"EMP-2040-03":{"2026-06-05":{status:"Unavailable",comment:"Training day"}}},
 };
 
 const initials=(n)=>n.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
-export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
+export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek,refreshKey}){
   const[ovr,setOvr]=useState(INITIAL_OVR);
   const[pop,setPop]=useState(null); // {person, dateKey}
 
@@ -57,22 +58,25 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek}){
         }
       })
       .catch(err => console.error("Error fetching crew status:", err));
-  }, [plant]);
+  }, [plant, refreshKey]);
 
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
   const groups = (CREW_GROUPS_BY_PLANT[plant] || []).map(g => ({ type: g.role, hint: g.hint, members: g.members }));
   const cellState=(person,dk)=>{
     const assignedBlast = personAssignments(person, dk)[0];
     if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
-    if(ovr[plant]?.[person]?.[dk])return{status:ovr[plant][person][dk].status,comment:ovr[plant][person][dk].comment,locked:false};
+    if(ovr[plant]?.[person]?.[dk]) {
+      const dbStatus = ovr[plant][person][dk].status;
+      return { status: dbStatus, comment: ovr[plant][person][dk].comment, ref: ovr[plant][person][dk].ref, locked: dbStatus === "Assigned" };
+    }
     if(OFFSHIFT[plant][person]&&OFFSHIFT[plant][person].includes(dk))return{status:"Off-shift",locked:true};
-    return{status:"Available",locked:false};
+    return{status:"Available",locked:false,ref:null};
   };
   const summary=useMemo(()=>{
     const c={Available:0,Assigned:0,Unavailable:0,"On Long Leave":0,"Off-shift":0};
-    groups.forEach(g=>g.members.forEach(p=>WEEK.forEach(d=>{c[cellState(p,d.k).status]++;})));
+    groups.forEach(g=>g.members.forEach(p=>WEEK.forEach(d=>{c[cellState(p.id,d.k).status]++;})));
     return c;
-  },[plant,ovr,workingWeek,fullWeek]);
+  },[plant,ovr,workingWeek,fullWeek,refreshKey]);
 
   const setRange=(person,fromKey,toKey,status,comment)=>{
     let fi=WEEK.findIndex(d=>d.k===fromKey),ti=WEEK.findIndex(d=>d.k===toKey);

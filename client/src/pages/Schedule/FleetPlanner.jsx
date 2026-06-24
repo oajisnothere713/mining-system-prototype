@@ -42,7 +42,7 @@ const INITIAL_OVR={
   "2010":{},"2040":{"KA-25-BMD-02":{"2026-06-03":{status:"Maintenance",comment:"Scheduled service"}}},
 };
 
-export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
+export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek,refreshKey}){
   const[ovr,setOvr]=useState(INITIAL_OVR);
   const[pop,setPop]=useState(null);
 
@@ -57,21 +57,24 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek}){
         }
       })
       .catch(err => console.error("Error fetching fleet status:", err));
-  }, [plant]);
+  }, [plant, refreshKey]);
 
   const WEEK=workingWeek?fullWeek.filter(d=>!d.we):fullWeek;
   const groups=GROUPS_BY_PLANT[plant];
   const cellState=(v,dk)=>{
     const assignedBlast = vehicleAssignments(v, dk)[0];
     if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
-    if(ovr[plant]?.[v]?.[dk])return{status:ovr[plant][v][dk].status,comment:ovr[plant][v][dk].comment,locked:false};
-    return{status:"Available",locked:false};
+    if(ovr[plant]?.[v]?.[dk]) {
+      const dbStatus = ovr[plant][v][dk].status;
+      return { status: dbStatus, comment: ovr[plant][v][dk].comment, ref: ovr[plant][v][dk].ref, locked: dbStatus === "Assigned" };
+    }
+    return{status:"Available",locked:false,ref:null};
   };
   const summary=useMemo(()=>{
     const c={Available:0,Assigned:0,Maintenance:0};
     groups.forEach(g=>g.members.forEach(v=>WEEK.forEach(d=>{c[cellState(v,d.k).status]++;})));
     return c;
-  },[plant,ovr,workingWeek,fullWeek]);
+  },[plant,ovr,workingWeek,fullWeek,refreshKey]);
   const setRange=(v,fromKey,toKey,status,comment)=>{
     let fi=WEEK.findIndex(d=>d.k===fromKey),ti=WEEK.findIndex(d=>d.k===toKey);
     if(fi<0||ti<0)return;if(ti<fi){[fi,ti]=[ti,fi];}

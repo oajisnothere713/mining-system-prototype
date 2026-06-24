@@ -47,7 +47,8 @@ export default function StockManagementPage() {
       setStockData(null);
       try {
         // Try API
-        const apiData = await getStock(selectedPlant.code, day);
+        const dayLabel = TABS.find(t => t.date === selectedDate)?.label || 'Today';
+        const apiData = await getStock(selectedPlant.code, dayLabel);
         if (!cancelled && apiData) {
           setStockData(apiData);
           return;

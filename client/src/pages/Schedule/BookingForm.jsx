@@ -155,9 +155,64 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
 
   const save = () => {
     if (!validationOk()) { setSaveAttempted(true); return; }
-    const doc = buildDoc();
-    if (isEdit) replaceBooking(doc); else addBooking(doc);
-    onSaved && onSaved(doc);
+    
+    if (f.bookingType === "recurring") {
+      const s = new Date(f.date + "T00:00:00");
+      const e = new Date(f.recEnd + "T00:00:00");
+      let count = 1;
+      let d = new Date(s);
+      
+      const parts = f._id.split('-');
+      const baseNum = parts[0] + '-' + parts[1] + '-' + parts[2];
+      
+      while (d <= e) {
+        const w = d.getDay();
+        if (f.recFreq === "Daily") {
+          if (f.recWorkingOnly && (w === 0 || w === 6)) {
+             d.setDate(d.getDate() + 1);
+             continue;
+          }
+        }
+        
+        const currentStr = d.toISOString().split('T')[0];
+        
+        const cloneF = { ...f, date: currentStr, bookingType: "single", _id: `${baseNum}-${count}`, blastNumber: `${baseNum}-${count}` };
+        const c = customer(); const now = new Date().toISOString();
+        
+        const doc = {
+          _id: cloneF._id, blastNumber: cloneF._id, plantCode: plantCode,
+          date: cloneF.date, startTime: cloneF.startTime,
+          bookingType: "single", endDate: null, recurrence: null,
+          customerId: cloneF.customerId, customerName: c ? c.name : "", shipToSite: cloneF.shipToSite,
+          customerPO: cloneF.customerPO, contractId: cloneF.contract || null, status: "Planned",
+          deliveryDockets: cloneF.dockets.map((dk, i) => ({
+            docketNumber: `${cloneF._id}-${String(i + 1).padStart(2, "0")}`,
+            status: "Planned", vehicleId: dk.vehicleId, operatorIds: dk.operatorIds, shotfirerIds: dk.shotfirerIds,
+            products: dk.products.filter(p => p.materialId && p.plannedQty).map(p => {
+              const m = PRODUCT_MAP[p.materialId];
+              return { materialId: p.materialId, name: m ? m.name : p.materialId, category: m ? m.cat : null, plannedQty: Number(p.plannedQty), uom: m ? m.uom : null, actualQty: null };
+            }),
+            services: dk.services.map(s => {
+              const sv = SERVICE_MAP[s.serviceId];
+              return { serviceId: s.serviceId, name: sv ? sv.name : s.serviceId, qty: Number(s.qty) || 1, uom: sv ? sv.uom : "ea" };
+            }),
+            notes: dk.notes || "", signature: null
+          })),
+          createdAt: now, updatedAt: now
+        };
+        
+        if (isEdit) replaceBooking(doc); else addBooking(doc);
+        
+        count++;
+        if (f.recFreq === "Daily") d.setDate(d.getDate() + 1);
+        else d.setDate(d.getDate() + 7);
+      }
+      onSaved && onSaved();
+    } else {
+      const doc = buildDoc();
+      if (isEdit) replaceBooking(doc); else addBooking(doc);
+      onSaved && onSaved(doc);
+    }
   };
 
   const fmtDate = (s) => !s ? "—" : new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
