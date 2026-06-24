@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar } from 'lucide-react';
 
-export default function CustomDatePicker({ value, onChange, placeholder = "dd-mm-yyyy", disabled = false, min = "", style = {}, className = "" }) {
+export default function CustomDatePicker({ value, onChange, placeholder = "dd-mm-yyyy", disabled = false, min = "", style = {}, className = "", alignRight = false }) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
   const ref = useRef();
@@ -76,7 +76,7 @@ export default function CustomDatePicker({ value, onChange, placeholder = "dd-mm
 
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, marginTop: 4,
+          position: 'absolute', top: '100%', ...(alignRight ? { right: 0 } : { left: 0 }), marginTop: 4,
           background: '#fff', border: '1px solid #E6E9ED', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
           padding: 16, zIndex: 100, width: 280
         }}>

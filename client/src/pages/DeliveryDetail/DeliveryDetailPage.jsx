@@ -48,6 +48,15 @@ export default function DeliveryDetailPage() {
       .then((data) => {
         setDelivery(data);
         setLines(data.lines.map((l) => ({ ...l })));
+        
+        // Parse "24 Jun 2026" back to "2026-06-24" for the date picker default
+        if (data.date) {
+          const months = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12' };
+          const parts = data.date.split(' ');
+          if (parts.length === 3) {
+            setReceiptDate(`${parts[2]}-${months[parts[1]]}-${parts[0].padStart(2, '0')}`);
+          }
+        }
       })
       .catch(() => {
         // If API fails, just stay on loading
@@ -135,18 +144,22 @@ export default function DeliveryDetailPage() {
         <Pill status={ibdStatus(delivery)} />
       </div>
 
-      <div className="detail-subtitle">
-        Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving
-        {!done && !physical ? (
-          <div style={{ display: 'inline-block', width: '150px', marginLeft: 6, verticalAlign: 'middle' }}>
-            <CustomDatePicker
-              value={receiptDate}
-              onChange={(val) => setReceiptDate(val)}
-              placeholder="dd-mm-yyyy"
-            />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div className="detail-subtitle" style={{ marginBottom: 0 }}>
+          Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving {delivery.date}
+        </div>
+        {!done && !physical && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '32px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 700 }}>Received on Date</span>
+            <div style={{ width: '150px' }}>
+              <CustomDatePicker
+                value={receiptDate}
+                onChange={(val) => setReceiptDate(val)}
+                placeholder="dd-mm-yyyy"
+                alignRight={true}
+              />
+            </div>
           </div>
-        ) : (
-          ` ${delivery.date}`
         )}
       </div>
 
