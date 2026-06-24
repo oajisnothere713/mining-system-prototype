@@ -9,6 +9,7 @@ import StockManagementPage from './pages/StockManagement/StockManagementPage';
 import SchedulePage from './pages/Schedule/SchedulePage';
 import DocketPage from './pages/Docket/DocketPage';
 import PortalPage from './pages/Portal/PortalPage';
+import ForecastBoardPage from './pages/ForecastBoard/ForecastBoardPage';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/schedule" element={<SchedulePage />} />
               <Route path="/docket" element={<DocketPage />} />
               <Route path="/portal" element={<PortalPage />} />
+              <Route path="/forecast" element={<ForecastBoardPage />} />
             </Route>
           </Routes>
         </ToastProvider>
