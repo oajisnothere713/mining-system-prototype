@@ -233,6 +233,22 @@ const recalcStockInbound = async (plantId, materialId) => {
   ]);
   const inboundPending = pendingResult.length > 0 ? pendingResult[0].total : 0;
 
+  // Ensure a stock record exists for this material
+  const existingStock = await Stock.findOne({ plant: plantId, material: materialId });
+  if (!existingStock) {
+    await Stock.create({
+      plant: plantId,
+      material: materialId,
+      date: new Date(),
+      opening: 0,
+      capacity: 1000,
+      inboundComplete: 0,
+      inboundPending: 0,
+      customerDelivery: 0,
+      closing: 0
+    });
+  }
+
   // Update all stock records for this plant+material
   await Stock.updateMany(
     { plant: plantId, material: materialId },

@@ -381,7 +381,7 @@ function blastCoversDate(b, dateKey) {
 export function vehicleAssignments(vehicleId, dateKey, excludeBlast = null) {
   const out = [];
   bookings.forEach(b => {
-    if (b.status === "Cancelled") return;
+    if (b.status === "Cancelled" || b.status === "Submitted") return;
     if (excludeBlast && b._id === excludeBlast) return;
     if (!blastCoversDate(b, dateKey)) return;
     (b.deliveryDockets || []).forEach(dk => { if (dk.vehicleId === vehicleId) out.push(b.blastNumber); });
@@ -392,7 +392,7 @@ export function vehicleAssignments(vehicleId, dateKey, excludeBlast = null) {
 export function personAssignments(person, dateKey, excludeBlast = null) {
   const out = [];
   bookings.forEach(b => {
-    if (b.status === "Cancelled") return;
+    if (b.status === "Cancelled" || b.status === "Submitted") return;
     if (excludeBlast && b._id === excludeBlast) return;
     if (!blastCoversDate(b, dateKey)) return;
     (b.deliveryDockets || []).forEach(dk => {
