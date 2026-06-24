@@ -10,7 +10,20 @@ const syncBookingStatuses = async (booking, isDelete = false) => {
   }
   const plantCode = booking.plantCode;
   const blastNumber = booking.blastNumber || booking._id;
-  const dateKey = booking.date;
+  
+  const getDatesInRange = (startDateStr, endDateStr) => {
+    if (!endDateStr) return [startDateStr];
+    const dates = [];
+    let current = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+  
+  const datesToSync = getDatesInRange(booking.date, booking.endDate);
   
   const operatorIds = new Set();
   const shotfirerIds = new Set();
@@ -34,15 +47,31 @@ const syncBookingStatuses = async (booking, isDelete = false) => {
     
     allCrew.forEach(id => {
       if (!newStatus[id]) newStatus[id] = {};
-      if (isDelete) {
-        if (newStatus[id][dateKey] && newStatus[id][dateKey].ref === blastNumber) {
-          delete newStatus[id][dateKey];
-          crewChanged = true;
+      datesToSync.forEach(dateKey => {
+        if (isDelete) {
+          if (newStatus[id][dateKey] && newStatus[id][dateKey].ref) {
+            let refs = newStatus[id][dateKey].ref.split(', ').filter(r => r !== blastNumber);
+            if (refs.length > 0) {
+              newStatus[id][dateKey].ref = refs.join(', ');
+            } else {
+              delete newStatus[id][dateKey];
+            }
+            crewChanged = true;
+          }
+        } else {
+          if (newStatus[id][dateKey] && newStatus[id][dateKey].ref) {
+            let refs = newStatus[id][dateKey].ref.split(', ');
+            if (!refs.includes(blastNumber)) {
+              refs.push(blastNumber);
+              newStatus[id][dateKey].ref = refs.join(', ');
+              crewChanged = true;
+            }
+          } else {
+            newStatus[id][dateKey] = { status: "Assigned", ref: blastNumber };
+            crewChanged = true;
+          }
         }
-      } else {
-        newStatus[id][dateKey] = { status: "Assigned", ref: blastNumber };
-        crewChanged = true;
-      }
+      });
     });
     if (crewChanged) {
       crewRec.status = newStatus;
@@ -60,15 +89,31 @@ const syncBookingStatuses = async (booking, isDelete = false) => {
     
     vehicleIds.forEach(id => {
       if (!newStatus[id]) newStatus[id] = {};
-      if (isDelete) {
-        if (newStatus[id][dateKey] && newStatus[id][dateKey].ref === blastNumber) {
-          delete newStatus[id][dateKey];
-          fleetChanged = true;
+      datesToSync.forEach(dateKey => {
+        if (isDelete) {
+          if (newStatus[id][dateKey] && newStatus[id][dateKey].ref) {
+            let refs = newStatus[id][dateKey].ref.split(', ').filter(r => r !== blastNumber);
+            if (refs.length > 0) {
+              newStatus[id][dateKey].ref = refs.join(', ');
+            } else {
+              delete newStatus[id][dateKey];
+            }
+            fleetChanged = true;
+          }
+        } else {
+          if (newStatus[id][dateKey] && newStatus[id][dateKey].ref) {
+            let refs = newStatus[id][dateKey].ref.split(', ');
+            if (!refs.includes(blastNumber)) {
+              refs.push(blastNumber);
+              newStatus[id][dateKey].ref = refs.join(', ');
+              fleetChanged = true;
+            }
+          } else {
+            newStatus[id][dateKey] = { status: "Assigned", ref: blastNumber };
+            fleetChanged = true;
+          }
         }
-      } else {
-        newStatus[id][dateKey] = { status: "Assigned", ref: blastNumber };
-        fleetChanged = true;
-      }
+      });
     });
     if (fleetChanged) {
       fleetRec.status = newStatus;
