@@ -95,10 +95,10 @@ export default function ForecastBoardPage() {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#EEF0F2' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#EEF0F2', margin: '-28px', height: 'calc(100% + 56px)' }}>
 
       {/* ===== ROW 1: Title + KPIs ===== */}
-      <div className="fc-header-top">
+      <div className="fc-header-top" style={{ borderTop: '1px solid #E1E4E8' }}>
         <div className="fc-header-title-block">
           <div className="fc-header-title">
             Forecast Board <span className="fc-header-depot">· {selectedPlant.name} depot</span>
@@ -131,7 +131,7 @@ export default function ForecastBoardPage() {
               <n.icon size={15} strokeWidth={2.2} />
               <span>{n.label}</span>
               {n.badge > 0 && (
-                <span className={`fc-nav-badge ${on ? 'fc-nav-badge-active' : ''}`}>
+                <span className="fc-nav-badge">
                   {n.badge}
                 </span>
               )}
