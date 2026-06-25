@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LayoutGrid, ClipboardCheck, Truck, Target } from 'lucide-react';
+import { usePlant } from '../../context/PlantContext/PlantContext';
 import WorkbenchTab from './WorkbenchTab';
 import ApprovalsTab from './ApprovalsTab';
 import CapacityTab from './CapacityTab';
@@ -57,6 +58,7 @@ function computeMat(m){
 // ---- MOCK DATA END ----
 
 export default function ForecastBoardPage() {
+  const { selectedPlant } = usePlant();
   const [nav, setNav] = useState('work');
   const [cat, setCat] = useState('BULK');
   const [sevFilter, setSevFilter] = useState('all');
@@ -67,25 +69,20 @@ export default function ForecastBoardPage() {
   const bulkRows = useMemo(() => rows.filter(r => r.c === 'BULK'), [rows]);
   const ispeRows = useMemo(() => rows.filter(r => r.c === 'IS&PE'), [rows]);
 
-  const titles = {
-    work: ['Materials workbench', 'Stock risk & 4-week demand for every material'],
-    approvals: ['Demand approval', 'Review weekly quantities and create Planned Orders'],
-    capacity: ['Capacity & gaps', 'Vehicle / crew load and customer booking gaps'],
-    accuracy: ['Forecast accuracy', 'How close past plans were to actual deliveries']
-  };
-  const [pageTitle, pageSub] = titles[nav];
+  const critCount = rows.filter(r => r.level === 'critical').length;
+  const reviewCount = 2; // mock — plans under review
 
   const kpis = [
-    { val: rows.filter(r => r.level === 'critical').length, label: 'Critical', color: '#C0392B' },
+    { val: critCount, label: 'Critical', color: '#C0392B' },
     { val: bulkRows.reduce((a, r) => a + r.total, 0).toLocaleString('en-US'), label: 'BULK plan (t)', color: '#17191C' },
     { val: '97%', label: 'Last-wk accuracy', color: '#2E7D46' },
   ];
 
   const navDefs = [
-    { key: 'work', label: 'Workbench', icon: LayoutGrid },
-    { key: 'approvals', label: 'Approvals', icon: ClipboardCheck },
-    { key: 'capacity', label: 'Capacity & Gaps', icon: Truck },
-    { key: 'accuracy', label: 'Accuracy', icon: Target },
+    { key: 'work', label: 'Workbench', icon: LayoutGrid, badge: critCount },
+    { key: 'approvals', label: 'Approvals', icon: ClipboardCheck, badge: reviewCount },
+    { key: 'capacity', label: 'Capacity & Gaps', icon: Truck, badge: 0 },
+    { key: 'accuracy', label: 'Accuracy', icon: Target, badge: 0 },
   ];
 
   // Provide state context to the active tab
@@ -99,41 +96,48 @@ export default function ForecastBoardPage() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#EEF0F2' }}>
-      {/* Top Header */}
-      <div style={{ flexShrink: 0, background: '#fff', borderBottom: '1px solid #E1E4E8', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: '24px' }}>
-        
-        {/* Title & Sub */}
-        <div style={{ minWidth: '220px' }}>
-          <div style={{ fontSize: '17px', fontWeight: 700, letterSpacing: '-0.3px', color: '#17191C' }}>{pageTitle}</div>
-          <div style={{ fontSize: '12px', color: '#5B6470', marginTop: '1px' }}>{pageSub}</div>
+
+      {/* ===== ROW 1: Title + KPIs ===== */}
+      <div className="fc-header-top">
+        <div className="fc-header-title-block">
+          <div className="fc-header-title">
+            Forecast Board <span className="fc-header-depot">· {selectedPlant.name} depot</span>
+          </div>
+          <div className="fc-header-sub">
+            4-week rolling demand &amp; supply plan · 23 Jun – 20 Jul 2026
+          </div>
         </div>
 
-        {/* Tab Navigation (Moved here from prototype's sidebar) */}
-        <div style={{ flex: 1, display: 'flex', gap: '8px', paddingLeft: '12px' }}>
-          {navDefs.map(n => {
-            const on = nav === n.key;
-            return (
-              <button
-                key={n.key}
-                onClick={() => setNav(n.key)}
-                className={`fc-nav-btn ${on ? 'fc-nav-btn-active' : ''}`}
-              >
-                <n.icon size={16} strokeWidth={2.5} />
-                <span>{n.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* KPIs */}
-        <div style={{ display: 'flex', gap: '16px' }}>
+        <div className="fc-header-kpis">
           {kpis.map((k, idx) => (
-            <div key={idx} style={{ textAlign: 'right', paddingLeft: '16px', borderLeft: '1px solid #EDEFF1' }}>
-              <div style={{ fontSize: '19px', fontWeight: 700, letterSpacing: '-0.4px', color: k.color }}>{k.val}</div>
-              <div style={{ fontSize: '11px', color: '#5B6470', marginTop: '1px' }}>{k.label}</div>
+            <div key={idx} className="fc-header-kpi">
+              <div className="fc-header-kpi-val" style={{ color: k.color }}>{k.val}</div>
+              <div className="fc-header-kpi-label">{k.label}</div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ===== ROW 2: Tab Navigation ===== */}
+      <div className="fc-header-nav">
+        {navDefs.map(n => {
+          const on = nav === n.key;
+          return (
+            <button
+              key={n.key}
+              onClick={() => setNav(n.key)}
+              className={`fc-nav-btn ${on ? 'fc-nav-btn-active' : ''}`}
+            >
+              <n.icon size={15} strokeWidth={2.2} />
+              <span>{n.label}</span>
+              {n.badge > 0 && (
+                <span className={`fc-nav-badge ${on ? 'fc-nav-badge-active' : ''}`}>
+                  {n.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Tab Content */}
