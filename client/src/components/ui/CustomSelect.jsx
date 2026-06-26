@@ -52,7 +52,9 @@ export default function CustomSelect({ value, onChange, options, placeholder = "
             const disabledOpt = typeof o === 'object' && o.disabled;
             
             if (isHeader) {
-               return <div key={i} style={{ padding: "8px 12px", fontSize: 11.5, fontWeight: 700, color: "#5B6470", textTransform: "uppercase", letterSpacing: 0.5, background: "#F7F8FA" }}>{l}</div>;
+               const bg = typeof o === 'object' && o.bg ? o.bg : "#F7F8FA";
+               const color = typeof o === 'object' && o.color ? o.color : "#5B6470";
+               return <div key={i} style={{ padding: "8px 12px", fontSize: 11.5, fontWeight: 800, color: color, textTransform: "uppercase", letterSpacing: 0.5, background: bg }}>{l}</div>;
             }
             
             const isSelected = v === value;

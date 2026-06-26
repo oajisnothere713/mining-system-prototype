@@ -96,7 +96,41 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     if (!f.date || !f.recEnd) return "Set a start and end date to preview the schedule.";
     const fmtDate = (s) => new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const dow = (s) => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(s + "T00:00:00").getDay()];
-    if (f.recFreq === "Daily") return `Repeats daily at ${f.startTime}, ${f.recWorkingOnly ? "Monday to Friday" : "every day"}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
+    
+    if (f.recFreq === "Daily") {
+      let base = `Repeats daily at ${f.startTime}, ${dow(f.date)} to ${dow(f.recEnd)}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
+      
+      if (f.recWorkingOnly) {
+        const s = new Date(f.date + "T00:00:00");
+        const e = new Date(f.recEnd + "T00:00:00");
+        const workingDays = new Set();
+        const weekendDays = new Set();
+        
+        if (e >= s) {
+          for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+            const w = d.getDay();
+            const dayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][w];
+            if (w === 0 || w === 6) weekendDays.add(dayName);
+            else workingDays.add(dayName);
+          }
+        }
+        
+        if (weekendDays.size > 0) {
+          const wDaysArr = Array.from(workingDays);
+          const wDaysStr = wDaysArr.length > 1 ? wDaysArr.slice(0, -1).join(", ") + " and " + wDaysArr[wDaysArr.length - 1] : wDaysArr[0] || "";
+          const weDaysArr = Array.from(weekendDays);
+          const weDaysStr = weDaysArr.length > 1 ? weDaysArr.slice(0, -1).join(" and ") + " and " + weDaysArr[weDaysArr.length - 1] : weDaysArr[0] || "";
+          const isPlural = workingDays.size > 1;
+          
+          if (wDaysStr) {
+             base += `. Will be repeated only on ${wDaysStr} which ${isPlural ? 'are' : 'is'} working day${isPlural ? 's' : ''}. To schedule on ${weDaysStr} need to uncheck working days only checkbox above.`;
+          } else {
+             base += `. To schedule on ${weDaysStr} need to uncheck working days only checkbox above.`;
+          }
+        }
+      }
+      return base;
+    }
     return `Repeats weekly on ${dow(f.date)} at ${f.startTime}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
   };
 
@@ -242,7 +276,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           newProducts[pi].materialId = val;
           setDocket(di, { products: newProducts });
         }} style={{ flex: 1, fontSize: 13.5 }} placeholder="Select product…" options={PRODUCT_CATS.flatMap(c => [
-          { label: c.cat, isHeader: true },
+          { label: c.cat, isHeader: true, bg: c.cat === 'BULK' ? '#EAF4FF' : '#F3EEFF', color: c.cat === 'BULK' ? '#1762A8' : '#6B3FC4' },
           ...c.items.map(pp => ({ value: pp.id, label: pp.name }))
         ])} />
         <input className="fld" type="number" min="0" placeholder="Qty" value={p.plannedQty || ""} onChange={e => {
@@ -409,7 +443,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
               <div style={{ flex: 1 }}><label className="lbl">Contract</label><input className="fld" placeholder="Contract ref" value={f.contract} onChange={e => set({ contract: e.target.value })} /></div>
             </div>
             <div style={{ fontSize: 12.5, color: "#1A5C8F", background: "#E7F5FF", border: "1px solid #BDD8F5", borderRadius: 9, padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.55 }}>
-              <i className="ti ti-info-circle" style={{ color: "#1971C2", flexShrink: 0, marginTop: 1, fontSize: 14 }}></i><span>In production, selecting a contract drives available products and pricing.</span>
+              <i className="ti ti-info-circle" style={{ color: "#1971C2", flexShrink: 0, marginTop: 1, fontSize: 14 }}></i><span>Selecting a contract drives available products and pricing.</span>
             </div>
           </div>
         </div>

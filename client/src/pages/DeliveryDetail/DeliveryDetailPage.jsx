@@ -146,9 +146,9 @@ export default function DeliveryDetailPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div className="detail-subtitle" style={{ marginBottom: 0 }}>
-          Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · arriving {delivery.date}
+          Linked to <b>{delivery.po}</b> (raised {delivery.poDate}) · {delivery.supplier} · {done ? 'arrived' : physical ? 'partially arrived' : 'arriving'} {delivery.date}
         </div>
-        {!done && !physical && (
+        {!done && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginRight: '32px' }}>
             <span style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 700 }}>Received on Date</span>
             <div style={{ width: '150px' }}>
@@ -198,12 +198,12 @@ export default function DeliveryDetailPage() {
                     <input
                       type="number"
                       value={l.received}
-                      disabled={done || physical}
+                      disabled={done}
                       onChange={(e) => setRecv(i, e.target.value)}
                       className="detail-recv-input"
                       style={{
-                        border: `1px solid ${match ? 'var(--line)' : 'var(--red)'}`,
-                        background: (done || physical) ? 'var(--bg)' : '#fff',
+                        border: `1px solid ${match ? 'var(--line)' : 'var(--blue)'}`,
+                        background: done ? 'var(--bg)' : '#fff',
                       }}
                     />
                   </td>
@@ -227,15 +227,31 @@ export default function DeliveryDetailPage() {
         <div className="detail-actions">
           {done ? (
             <Banner color="var(--green)" soft="var(--green-soft)" icon={CheckCircle2}>
-              Goods Receipt posted to ERP · Inventory updated as PGR Complete
+              Goods Receipt posted to ERP · Inventory updated as PGR Complete, PGR completed on {delivery.date}
             </Banner>
-          ) : physical ? (
-            <Banner color="#9C6B00" soft="var(--amber-soft)" icon={AlertTriangle}>
-              Physically received and reflected in stock as <b>PGR Pending</b>. PGR is blocked due to a quantity variance — supply chain must reverse this IBD and re-issue a corrected one in the ERP. Use <b>Sync with ERP</b> on the dashboard to fetch the corrected delivery.
-            </Banner>
-          ) : !allMatch ? (
+          ) : allMatch ? (
             <>
-              <Banner color="var(--red)" soft="var(--red-soft)" icon={AlertTriangle}>
+              <Banner color="var(--blue)" soft="var(--blue-soft)" icon={Info}>
+                All lines match the expected quantities. On confirmation, a Goods Receipt posts to ERP and stock updates in real time as PGR Complete — no SAP GUI needed.
+              </Banner>
+              <button onClick={handleConfirmPGR} disabled={saving} className="detail-btn-solid detail-btn-confirm" style={{ opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                {saving ? <><Loader2 size={18} className="lucide-spin" /> Processing...</> : <><ClipboardCheck size={18} /> Confirm Goods Receipt</>}
+              </button>
+            </>
+          ) : physical ? (
+            <>
+              <Banner color="var(--blue)" soft="var(--blue-soft)" icon={AlertTriangle}>
+                Physically received and reflected in stock as <b>PGR Pending</b>. Adjust the quantities below to match the expected if the missing goods arrive, or wait for supply chain to issue a corrected IBD.
+              </Banner>
+              <div className="detail-action-buttons">
+                <button disabled className="detail-btn-solid detail-btn-blocked">
+                  <ClipboardCheck size={18} /> Confirm Goods Receipt (blocked)
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Banner color="var(--blue)" soft="var(--blue-soft)" icon={AlertTriangle}>
                 One or more lines do not match the expected quantity. Goods Receipt cannot be posted. Either correct the entry, or record the physical arrival and let supply chain re-issue a corrected IBD in the ERP.
               </Banner>
               <div className="detail-action-buttons">
@@ -246,15 +262,6 @@ export default function DeliveryDetailPage() {
                   {saving ? <><Loader2 size={18} className="lucide-spin" /> Processing...</> : <><Package size={18} /> Receive Physically (PGR Pending)</>}
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              <Banner color="var(--blue)" soft="var(--blue-soft)" icon={Info}>
-                All lines match the expected quantities. On confirmation, a Goods Receipt posts to ERP and stock updates in real time as PGR Complete — no SAP GUI needed.
-              </Banner>
-              <button onClick={handleConfirmPGR} disabled={saving} className="detail-btn-solid detail-btn-confirm" style={{ opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}>
-                {saving ? <><Loader2 size={18} className="lucide-spin" /> Processing...</> : <><ClipboardCheck size={18} /> Confirm Goods Receipt</>}
-              </button>
             </>
           )}
         </div>

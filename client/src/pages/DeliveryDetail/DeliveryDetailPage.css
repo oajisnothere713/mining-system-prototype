@@ -142,7 +142,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--red);
+  color: var(--blue);
   font-weight: 600;
   font-size: 13px;
 }
