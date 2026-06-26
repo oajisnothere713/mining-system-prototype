@@ -379,30 +379,16 @@ const syncERP = async (req, res, next) => {
     const updatedDeliveries = [];
     const affectedStockKeys = new Set(); // Collect unique plant|material pairs to recalculate stock efficiently
 
-    // 1. Process physical_pending deliveries (Quantity Split)
+    // 1. Process physical_pending deliveries
     for (const delivery of pendingDeliveries) {
-      let hasVariance = false;
-      const newLines = [];
-
-      // Check for variance and adjust original delivery lines
+      // Keep the same IBD number and PO, and restore all materials
+      // so the user can hit "PGR complete". Set received = expected.
       for (const line of delivery.lines) {
-        const missing = line.expected - line.received;
-        if (missing > 0) {
-          hasVariance = true;
-          newLines.push({
-            material: line.material,
-            expected: missing,
-            received: missing
-          });
-        }
-        // Correct the original line to match what was received
-        line.expected = line.received;
+        line.received = line.expected;
       }
-
-      // Mark the original delivery as complete (so stock is officially added)
-      // and hide it from the UI so it appears "deleted" to the user.
-      delivery.state = 'complete';
-      delivery.hidden = true;
+      
+      delivery.state = 'in_transit';
+      delivery.date = new Date(); // Update date so it jumps to the top of the list
 
       await delivery.save();
 
@@ -413,31 +399,11 @@ const syncERP = async (req, res, next) => {
 
       const populatedOld = await findDeliveryByIdOrNumberPopulated(delivery._id);
       updatedDeliveries.push(formatDelivery(populatedOld));
-
-      // If there was a variance, create a new "remainder" delivery
-      if (hasVariance) {
-        const newDelivery = await Delivery.create({
-          ibdNumber: `IBD-${nextIbdNum++}`,
-          poNumber: delivery.poNumber,
-          poDate: delivery.poDate,
-          plant: delivery.plant,
-          date: new Date(),
-          supplier: delivery.supplier,
-          state: 'in_transit',
-          lines: newLines
-        });
-
-        // Track stock keys for the new delivery
-        for (const line of newDelivery.lines) {
-          affectedStockKeys.add(`${newDelivery.plant.toString()}|${line.material.toString()}`);
-        }
-        const populatedNew = await findDeliveryByIdOrNumberPopulated(newDelivery._id);
-        updatedDeliveries.push(formatDelivery(populatedNew));
-      }
     }
 
-    // 2. Generate 5 random deliveries if we have a target plant
-    if (targetPlantId) {
+    // 2. Generate remaining random deliveries so the total updated + new is 5
+    const numRandom = Math.max(0, 5 - pendingDeliveries.length);
+    if (targetPlantId && numRandom > 0) {
       const materials = await Material.find({});
       const suppliers = [
         "Deepak AN Works", "Solar Industries", "Keltech Energies",
@@ -445,7 +411,7 @@ const syncERP = async (req, res, next) => {
         "IDL Explosives", "Rajasthan Explosives"
       ];
 
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < numRandom; i++) {
         const poRandom = Math.floor(10000 + Math.random() * 90000); // 5 digit random
         const supplier = suppliers[Math.floor(Math.random() * suppliers.length)];
         
