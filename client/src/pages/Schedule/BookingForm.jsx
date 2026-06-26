@@ -6,7 +6,7 @@ import CustomTimePicker from "../../components/ui/CustomTimePicker";
 import {
   CUSTOMERS, VEHICLE_GROUPS_BY_PLANT, CREW_GROUPS_BY_PLANT,
   PRODUCT_CATS, PRODUCT_MAP, SERVICES, SERVICE_MAP,
-  getBookingById, addBooking, replaceBooking, nextBlastNumber,
+  getBookingById, addBooking, replaceBooking, deleteBooking, nextBlastNumber,
   vehicleAssignments, personAssignments,
 } from "./bookingStore";
 
@@ -21,8 +21,16 @@ function emptyDocket() {
 }
 
 function docToForm(doc) {
+  let startDate = doc.date;
+  if (doc.bookingType === "recurring") {
+    const parts = doc._id.split('-');
+    const baseNum = parts.length > 3 ? `${parts[0]}-${parts[1]}-${parts[2]}` : doc._id;
+    const firstOcc = getBookingById(`${baseNum}-1`);
+    if (firstOcc) startDate = firstOcc.date;
+  }
+
   return {
-    _id: doc._id, blastNumber: doc.blastNumber, date: doc.date, startTime: doc.startTime || "04:30",
+    _id: doc._id, blastNumber: doc.blastNumber, date: startDate, startTime: doc.startTime || "04:30",
     bookingType: doc.bookingType || "single", endDate: doc.endDate || "",
     recFreq: doc.recurrence ? (doc.recurrence.frequency === "weekly" ? "Weekly" : "Daily") : "Daily",
     recEnd: doc.recurrence ? doc.recurrence.endDate : "",
@@ -208,15 +216,15 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           }
         }
         
-        const currentStr = d.toISOString().split('T')[0];
+        const currentStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         
-        const cloneF = { ...f, date: currentStr, bookingType: "single", _id: `${baseNum}-${count}`, blastNumber: `${baseNum}-${count}` };
+        const cloneF = { ...f, date: currentStr, bookingType: "recurring", _id: `${baseNum}-${count}`, blastNumber: `${baseNum}-${count}` };
         const c = customer(); const now = new Date().toISOString();
         
         const doc = {
           _id: cloneF._id, blastNumber: cloneF._id, plantCode: plantCode,
           date: cloneF.date, startTime: cloneF.startTime,
-          bookingType: "single", endDate: null, recurrence: null,
+          bookingType: "recurring", endDate: null, recurrence: { frequency: f.recFreq.toLowerCase(), endDate: f.recEnd, workingDaysOnly: f.recWorkingOnly, occurrences: occ },
           customerId: cloneF.customerId, customerName: c ? c.name : "", shipToSite: cloneF.shipToSite,
           customerPO: cloneF.customerPO, contractId: cloneF.contract || null, status: "Planned",
           deliveryDockets: cloneF.dockets.map((dk, i) => ({
@@ -241,6 +249,15 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
         if (f.recFreq === "Daily") d.setDate(d.getDate() + 1);
         else d.setDate(d.getDate() + 7);
       }
+      
+      if (isEdit) {
+        let excessCount = count;
+        while (getBookingById(`${baseNum}-${excessCount}`)) {
+          deleteBooking(`${baseNum}-${excessCount}`);
+          excessCount++;
+        }
+      }
+      
       onSaved && onSaved();
     } else {
       const doc = buildDoc();
