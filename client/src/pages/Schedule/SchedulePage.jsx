@@ -178,43 +178,7 @@ export default function SchedulePage() {
     const flattened = [];
 
     const generateDates = (b) => {
-      if (b.bookingType !== "recurring" || !b.recurrence) return [b.date];
-      const dates = [];
-      let currentDate = new Date(b.date);
-      const freq = b.recurrence.frequency || "daily";
-      const maxOccurrences = b.recurrence.occurrences || 365;
-      const endDateStr = b.recurrence.endDate;
-      const workingDaysOnly = b.recurrence.workingDaysOnly;
-
-      let occurrences = 0;
-      let loopCount = 0;
-      
-      while (occurrences < maxOccurrences && loopCount < 1000) {
-        loopCount++;
-        const currentStr = currentDate.toISOString().split('T')[0];
-        
-        if (endDateStr && currentStr > endDateStr) {
-          break;
-        }
-
-        const dayOfWeek = currentDate.getDay(); // 0 = Sun, 6 = Sat
-        let isValidDay = true;
-        if (workingDaysOnly && (dayOfWeek === 0 || dayOfWeek === 6)) {
-           isValidDay = false;
-        }
-
-        if (isValidDay) {
-          dates.push(currentStr);
-          occurrences++;
-        }
-
-        if (freq === 'weekly') {
-          currentDate.setDate(currentDate.getDate() + 7);
-        } else { 
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      }
-      return dates.length > 0 ? dates : [b.date];
+      return [b.date];
     };
 
     raw.forEach(b => {
