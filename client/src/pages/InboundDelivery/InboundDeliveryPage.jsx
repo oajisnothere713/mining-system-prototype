@@ -177,7 +177,7 @@ export default function InboundDeliveryPage() {
         <table className="ibd-table">
           <thead>
             <tr>
-              {['IBD No.', 'PO No.', 'PO Date', 'Date', 'Supplier', 'Line Items', 'Status'].map((h) => (
+              {['IBD No.', 'PO No.', 'PO Date', 'Delivery Date', 'Supplier', 'Line Items', 'Status'].map((h) => (
                 <th key={h}>{h}</th>
               ))}
             </tr>
