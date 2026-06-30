@@ -271,9 +271,16 @@ exports.seedForecastData = async (req, res, next) => {
       if (matName === 'Detonating Cord 10 g/m') matName = 'Detonating Cord ?" 10g/m';
       if (matName === 'Bulk Emulsion') matName = 'Bulk Emulsion';
       
-      const officialMaterial = await Material.findOne({ name: m.n }) || await Material.findOne({ name: matName });
+      let officialMaterial = await Material.findOne({ name: m.n }) || await Material.findOne({ name: matName });
       
-      if (!officialMaterial) continue;
+      if (!officialMaterial) {
+        officialMaterial = await Material.create({
+          name: m.n,
+          type: m.c === 'BULK' ? 'Bulk' : 'Initiating Systems',
+          uom: m.u,
+          status: 'Active'
+        });
+      }
       
       materialDocs.push({
         plant: plantId,
