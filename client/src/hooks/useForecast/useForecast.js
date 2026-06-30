@@ -14,7 +14,7 @@ export function useForecast() {
   const [accuracy, setAccuracy] = useState([]);
 
   const fetchData = useCallback(async () => {
-    if (!selectedPlant) return;
+    if (!selectedPlant || !selectedPlant._id) return;
 
     try {
       setLoading(true);
