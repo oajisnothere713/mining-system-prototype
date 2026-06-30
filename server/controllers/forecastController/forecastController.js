@@ -29,7 +29,7 @@ exports.getMaterials = async (req, res, next) => {
     // Map each forecast material to its real-time stock
     const materials = await Promise.all(forecastMaterials.map(async (fm) => {
       // Find the most recent stock record for this plant and material
-      const stockRecord = await Stock.findOne({ plant, material: fm.material._id }).sort({ date: -1 });
+      const stockRecord = fm.material ? await Stock.findOne({ plant, material: fm.material._id }).sort({ date: -1 }) : null;
       
       // Calculate top customers from bookings
       const customerStats = {};
@@ -43,7 +43,7 @@ exports.getMaterials = async (req, res, next) => {
         }
 
         const hasMaterial = (b.deliveryDockets || []).some(dk => 
-          (dk.products || []).some(p => p.name === fm.material.name || p.materialId === fm.material._id.toString())
+          (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
         );
         
         if (hasMaterial) {
@@ -56,7 +56,7 @@ exports.getMaterials = async (req, res, next) => {
           let matQty = 0;
           (b.deliveryDockets || []).forEach(dk => {
             (dk.products || []).forEach(p => {
-              if (p.name === fm.material.name || p.materialId === fm.material._id.toString()) {
+              if (p.name === fm.material?.name || p.materialId === fm.material?._id?.toString()) {
                 matQty += p.plannedQty || 0;
               }
             });
@@ -78,9 +78,9 @@ exports.getMaterials = async (req, res, next) => {
       return {
         _id: fm._id,
         plant: fm.plant,
-        name: fm.material.name,
-        category: fm.material.type === 'Bulk' ? 'BULK' : 'IS&PE',
-        uom: fm.material.uom,
+        name: fm.material?.name || 'Unknown Material',
+        category: fm.material?.type === 'Bulk' ? 'BULK' : 'IS&PE',
+        uom: fm.material?.uom || 'ea',
         stock: stockRecord ? stockRecord.closing : 0,
         weeklyDemand: fm.weeklyDemand,
         leadTime: fm.leadTime,
@@ -173,7 +173,7 @@ exports.getCapacity = async (req, res, next) => {
 
     // Dynamically derive capacity data based on materials
     const materialsRaw = await ForecastMaterial.find({ plant }).populate('material');
-    const materials = materialsRaw.filter(m => m.material.type === 'Bulk');
+    const materials = materialsRaw.filter(m => m.material?.type === 'Bulk');
     
     // Sum total bulk volume for week 0 as the primary requirement
     const requiredVolume = materials.reduce((acc, m) => acc + (m.weeklyDemand[0] || 0), 0);
