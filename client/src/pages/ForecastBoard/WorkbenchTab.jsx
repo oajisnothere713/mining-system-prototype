@@ -166,25 +166,6 @@ export default function WorkbenchTab({
               Unit: {sel.u} · Supplier lead time {sel.lead} days · {sel.custCount} customers driving demand
             </div>
           </div>
-          <button
-            onClick={async () => {
-              if (!window.confirm('This will wipe and reseed the forecast database for this plant. Continue?')) return;
-              try {
-                const res = await fetch(`/api/forecast/seed?plant=${forecast.materials[0]?.plant}`, { method: 'POST' });
-                if (res.ok) window.location.reload();
-              } catch (e) {
-                console.error(e);
-              }
-            }}
-            style={{
-              fontFamily: 'inherit', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '7px', 
-              padding: '10px 16px', borderRadius: '9px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-              background: '#EEF0F2', color: '#5B6470', border: '1px solid #D1D5DB', marginRight: '8px'
-            }}
-          >
-            <Database size={16} />
-            Reseed Data
-          </button>
           <button 
             onClick={() => setModalScope('mat')}
             style={{
