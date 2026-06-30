@@ -80,8 +80,47 @@ export default function ForecastBoardPage() {
 
   if (forecast.loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#EEF0F2', margin: '-28px', height: 'calc(100% + 56px)' }}>
-        <Loader2 className="lucide-spin" size={32} color="var(--blue)" />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#EEF0F2', margin: '-28px', height: 'calc(100% + 56px)' }}>
+        {/* Skeleton ROW 1: Title + KPIs */}
+        <div className="fc-header-top" style={{ borderTop: '1px solid #E1E4E8' }}>
+          <div className="fc-header-title-block">
+            <div className="skeleton-box" style={{ width: '250px', height: '28px', marginBottom: '8px', borderRadius: '6px' }}></div>
+            <div className="skeleton-box" style={{ width: '300px', height: '16px', borderRadius: '4px' }}></div>
+          </div>
+          <div className="fc-header-kpis">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="fc-header-kpi">
+                <div className="skeleton-box" style={{ width: '40px', height: '32px', marginBottom: '4px', borderRadius: '6px' }}></div>
+                <div className="skeleton-box" style={{ width: '80px', height: '14px', borderRadius: '4px' }}></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Skeleton ROW 2: Tab Navigation */}
+        <div className="fc-header-nav">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="fc-nav-btn" style={{ cursor: 'default' }}>
+              <div className="skeleton-box" style={{ width: '100px', height: '18px', borderRadius: '4px' }}></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Skeleton Main Content */}
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', padding: '16px', gap: '16px' }}>
+           {/* Sidebar Skeleton */}
+           <div style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+             <div className="skeleton-box" style={{ width: '100%', height: '40px', borderRadius: '8px' }}></div>
+             {[1, 2, 3, 4, 5].map(i => (
+               <div key={i} className="skeleton-box" style={{ width: '100%', height: '56px', borderRadius: '8px' }}></div>
+             ))}
+           </div>
+           {/* Main Area Skeleton */}
+           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+             <div className="skeleton-box" style={{ width: '100%', height: '120px', borderRadius: '12px' }}></div>
+             <div className="skeleton-box" style={{ width: '100%', flex: 1, borderRadius: '12px' }}></div>
+           </div>
+        </div>
       </div>
     );
   }

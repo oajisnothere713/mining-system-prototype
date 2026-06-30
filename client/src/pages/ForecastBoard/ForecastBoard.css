@@ -167,3 +167,16 @@
   background: #FCEDE4;
   border-left-color: #DC5B16;
 }
+
+@keyframes pulse-skeleton {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.skeleton-box {
+  background: #D1D5DB;
+  border-radius: 4px;
+  animation: pulse-skeleton 1.5s ease-in-out infinite;
+}
+
