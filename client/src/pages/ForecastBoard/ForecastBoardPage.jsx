@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LayoutGrid, ClipboardCheck, Truck, Target } from 'lucide-react';
+import { LayoutGrid, ClipboardCheck, Truck, Target, Database } from 'lucide-react';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import WorkbenchTab from './WorkbenchTab';
 import ApprovalsTab from './ApprovalsTab';
@@ -8,6 +8,8 @@ import AccuracyTab from './AccuracyTab';
 import './ForecastBoard.css';
 import { useForecast } from '../../hooks/useForecast/useForecast';
 import { Loader2 } from 'lucide-react';
+import forecastService from '../../services/forecastService/forecastService';
+import { useToast } from '../../context/ToastContext/ToastContext';
 
 function getSev(l){
   if(l==='critical') return {fg:'#C0392B',bg:'#FAE9E7',border:'#F0D9D6',dot:'#C0392B',label:'Critical',icon:'ti ti-alert-circle'};
@@ -36,9 +38,11 @@ function computeMat(m){
 
 export default function ForecastBoardPage() {
   const { selectedPlant } = usePlant();
+  const { showToast } = useToast();
   const forecast = useForecast();
   
   const [nav, setNav] = useState('work');
+  const [isSeeding, setIsSeeding] = useState(false);
   const [cat, setCat] = useState('BULK');
   const [sevFilter, setSevFilter] = useState('all');
   const [selName, setSelName] = useState('AN Prill');
@@ -86,7 +90,31 @@ export default function ForecastBoardPage() {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#EEF0F2', margin: '-28px', height: 'calc(100% + 56px)', color: '#5B6470' }}>
         <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No forecast data available</div>
-        <div style={{ fontSize: '14px' }}>There is no forecast data for {selectedPlant?.name || 'this plant'}. Please run the seed script or select a different plant.</div>
+        <div style={{ fontSize: '14px', marginBottom: '16px' }}>There is no forecast data for {selectedPlant?.name || 'this plant'}. Please run the seed script or click the button below.</div>
+        
+        <button 
+          onClick={async () => {
+            if (!selectedPlant?._id) return;
+            try {
+              setIsSeeding(true);
+              const res = await forecastService.seed(selectedPlant._id);
+              if (res.success) {
+                showToast('Database seeded successfully!', 'success');
+                forecast.refresh();
+              }
+            } catch (err) {
+              console.error(err);
+              showToast('Failed to seed database', 'error');
+            } finally {
+              setIsSeeding(false);
+            }
+          }}
+          disabled={isSeeding}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: isSeeding ? '#ccc' : '#FF5E00', color: 'white', border: 'none', borderRadius: '4px', cursor: isSeeding ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+        >
+          {isSeeding ? <Loader2 size={18} className="spinner" /> : <Database size={18} />}
+          {isSeeding ? 'Seeding...' : 'Seed Database Now'}
+        </button>
       </div>
     );
   }

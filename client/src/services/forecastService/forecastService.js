@@ -5,6 +5,11 @@ const getMaterials = async (plantId) => {
   return response.data;
 };
 
+const seed = async (plantId) => {
+  const response = await axiosInstance.post(`/forecast/seed?plant=${plantId}`);
+  return response.data;
+};
+
 const updateMaterial = async (id, data) => {
   const response = await axiosInstance.put(`/forecast/materials/${id}`, data);
   return response.data;
@@ -37,6 +42,7 @@ const forecastService = {
   updatePlanStatus,
   getCapacity,
   getAccuracy,
+  seed
 };
 
 export default forecastService;
