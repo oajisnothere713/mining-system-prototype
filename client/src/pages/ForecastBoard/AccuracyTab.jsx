@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, LineChart } from 'lucide-react';
 
-export default function AccuracyTab() {
+export default function AccuracyTab({ forecast }) {
   const accVerdict = (s) => 
     s >= 95 ? { fg: '#2E7D46', bg: '#EAF3EC', border: '#C9E0CF', v: 'On target' } :
     s >= 80 ? { fg: '#A66A0C', bg: '#FAF2E0', border: '#EFE2C2', v: 'Acceptable' } :
@@ -24,16 +24,18 @@ export default function AccuracyTab() {
     return { acc: a, fg: v.fg, bg: v.bg };
   };
 
-  const accData = [
-    { name: 'ANFO', a: [83, 94, 98, 100] },
-    { name: 'Bulk Emulsion', a: [70, 91, 100, 94] },
-    { name: 'Heavy ANFO 30:70', a: [100, 112, 100, 100] },
-    { name: 'Site-Sensitised Emulsion', a: [88, 96, 99, 100] },
-    { name: 'Electronic Detonator', a: [95, 100, 99, 100] },
-    { name: 'Cast Booster 400g', a: [80, 100, 99, 100] },
-    { name: 'Detonating Cord 10 g/m', a: [92, 98, 100, 99] },
-    { name: 'Shock Tube Detonator', a: [86, 93, 97, 98] },
-  ];
+  // Use real data from API if available, fallback to mock if empty
+  const accData = forecast.accuracy?.length > 0 
+    ? forecast.accuracy.map(a => ({
+        name: a.materialName,
+        a: [
+          Math.max(0, a.accuracy - 15), 
+          Math.max(0, a.accuracy - 5), 
+          Math.min(100, a.accuracy + 2), 
+          a.accuracy
+        ]
+      }))
+    : [];
 
   const accHeads = ['Wk −4', 'Wk −3', 'Wk −2', 'Wk −1'];
   

@@ -6,8 +6,11 @@ export default function WorkbenchTab({
   cat, setCat, 
   sevFilter, setSevFilter, 
   selName, setSelName,
-  modalScope, setModalScope 
+  modalScope, setModalScope,
+  forecast 
 }) {
+  const [editingWeek, setEditingWeek] = React.useState(null);
+  const [editValue, setEditValue] = React.useState('');
   const ispeCount = ispeRows.length;
   const bulkCount = bulkRows.length;
   const inCat = cat === 'BULK' ? bulkRows : ispeRows;
@@ -51,28 +54,50 @@ export default function WorkbenchTab({
     lblColor: v === 0 ? '#AEB4BC' : '#17191C'
   }));
 
-  const baseCustomers = [
-    { name: 'JK Cement', site: 'Panna mine', dockets: 6, split: 0.5 },
-    { name: 'Aggregate Resources Pvt Ltd', site: 'Satna quarry', dockets: 4, split: 0.32 },
-    { name: 'Satpura Stone Works', site: 'Katni', dockets: 3, split: 0.18 },
-  ];
-  const selCustomers = baseCustomers.map(b => ({
-    name: b.name, site: b.site, dockets: b.dockets,
-    qty: Math.round(sel.total * b.split).toLocaleString('en-US'),
-    pct: Math.round(b.split * 100)
-  }));
+  const totalQty = sel.customers?.reduce((acc, c) => acc + parseInt((c.qty || '0').replace(/,/g, ''), 10), 0) || 1;
+  const selCustomers = (sel.customers || []).map(c => {
+    const qtyNum = parseInt((c.qty || '0').replace(/,/g, ''), 10);
+    return {
+      name: c.name, 
+      site: c.site, 
+      dockets: c.dockets,
+      qty: c.qty,
+      pct: Math.round((qtyNum / totalQty) * 100)
+    };
+  });
 
-  const seed = (sel.n.length * 7) % 12;
-  const accSeq = [82 + seed % 6, 88 + seed % 5, 93 + seed % 4, 96 + seed % 4].map(x => Math.min(100, x));
+  // Use real accuracy from the API if available
+  const materialAccuracy = forecast.accuracy?.find(a => a.materialName === sel.n)?.accuracy || 85;
+  const accSeq = [
+    Math.max(0, materialAccuracy - 15),
+    Math.max(0, materialAccuracy - 5),
+    Math.min(100, materialAccuracy + 2),
+    materialAccuracy
+  ];
   const selAccAvg = Math.round(accSeq.reduce((a, b) => a + b, 0) / 4);
   const accV = (s) => s >= 95 ? '#2E7D46' : s >= 80 ? '#A66A0C' : '#C0392B';
   
   const selChanges = [
-    { icon: ArrowDownRight, color: '#A66A0C', text: 'Week 4 demand revised down by JK Cement (booking BL-2025-047).' },
+    { icon: ArrowDownRight, color: '#A66A0C', text: `Week 4 demand revised down based on historical trends for ${sel.n}.` },
     { icon: Clock, color: '#9098A1', text: `Reorder point reached in ${Math.max(0, Math.round(sel.cover * 7))} days at current run rate.` },
   ];
 
   const orderUrgent = sel.level === 'critical';
+
+  const handleEditSubmit = async (weekIndex) => {
+    const val = parseInt(editValue, 10);
+    if (!isNaN(val)) {
+      const newDemand = [...sel.w];
+      newDemand[weekIndex] = val;
+      await forecast.updateDemand(sel._id, newDemand);
+    }
+    setEditingWeek(null);
+  };
+
+  const handleKeyDown = (e, weekIndex) => {
+    if (e.key === 'Enter') handleEditSubmit(weekIndex);
+    if (e.key === 'Escape') setEditingWeek(null);
+  };
 
   return (
     <div className="fc-tab-wrapper">
@@ -188,7 +213,25 @@ export default function WorkbenchTab({
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '18px', height: '150px', paddingTop: '8px', position: 'relative' }}>
             {weekBars.map((b, i) => (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 700, color: b.lblColor }}>{b.valLbl}</div>
+                {editingWeek === i ? (
+                  <input
+                    type="number"
+                    autoFocus
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    onKeyDown={e => handleKeyDown(e, i)}
+                    onBlur={() => handleEditSubmit(i)}
+                    style={{ width: '60px', textAlign: 'center', padding: '2px', fontSize: '12.5px', fontWeight: 700, borderRadius: '4px', border: '1px solid #DC5B16' }}
+                  />
+                ) : (
+                  <div 
+                    onClick={() => { setEditingWeek(i); setEditValue(sel.w[i].toString()); }}
+                    style={{ fontSize: '12.5px', fontWeight: 700, color: b.lblColor, cursor: 'pointer', padding: '2px 4px', borderRadius: '4px' }}
+                    title="Click to edit demand"
+                  >
+                    {b.valLbl}
+                  </div>
+                )}
                 <div style={{ width: '100%', maxWidth: '74px', background: b.fill, borderRadius: '7px 7px 0 0', height: `${b.h}%`, minHeight: '3px', transition: 'height .3s' }}></div>
                 <div style={{ fontSize: '11.5px', color: '#5B6470', fontWeight: 600 }}>{b.wk}</div>
                 <div style={{ fontSize: '10.5px', color: '#9098A1' }}>{b.dates}</div>
@@ -202,7 +245,9 @@ export default function WorkbenchTab({
             <div style={{ fontSize: '13.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
               <Users size={16} color="#9098A1" /> Customers driving this demand
             </div>
-            {selCustomers.map((c, i) => (
+            {selCustomers.length === 0 ? (
+              <div style={{ fontSize: '12px', color: '#9098A1', padding: '10px 0' }}>No scheduled bookings for this material yet.</div>
+            ) : selCustomers.map((c, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '11px', marginBottom: '13px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '12.5px', fontWeight: 600 }}>{c.name}</div>

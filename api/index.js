@@ -17,6 +17,7 @@ const stockRoutes = require('../server/routes/stockRoutes/stockRoutes');
 const aiRoutes = require('../server/routes/aiRoutes');
 const scheduleRoutes = require('../server/routes/scheduleRoutes/scheduleRoutes');
 const bookingRoutes = require('../server/routes/bookingRoutes');
+const forecastRoutes = require('../server/routes/forecastRoutes/forecastRoutes');
 const errorHandler = require('../server/middleware/errorHandler/errorHandler');
 
 const app = express();
@@ -65,6 +66,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/forecast', forecastRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
