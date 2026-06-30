@@ -1,5 +1,5 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 const mongoose = require('mongoose');
 const Plant = require('../../models/Plant/Plant');
@@ -19,6 +19,7 @@ const PLANTS = [
 ];
 
 const MATERIALS = {
+  // Existing
   'Ammonium Nitrate Emulsion (ANE)': { type: 'Bulk', uom: 't' },
   'Ammonium Nitrate (AN)': { type: 'Bulk', uom: 't' },
   'Bulk Emulsion': { type: 'Bulk', uom: 't' },
@@ -26,6 +27,33 @@ const MATERIALS = {
   'Detonator — 1.5m, 0.02s': { type: 'Initiating Systems', uom: 'ea' },
   'Booster — 400g': { type: 'Initiating Systems', uom: 'ea' },
   'Detonating Cord — 10g/m': { type: 'Initiating Systems', uom: 'm' },
+  
+  // From Forecast
+  'AN Prill': { type: 'Bulk', uom: 't' },
+  'ANFO': { type: 'Bulk', uom: 't' },
+  'Heavy ANFO 30:70': { type: 'Bulk', uom: 't' },
+  'Heavy ANFO 40:60': { type: 'Bulk', uom: 't' },
+  'Heavy ANFO 50:50': { type: 'Bulk', uom: 't' },
+  'Pumpable Emulsion': { type: 'Bulk', uom: 't' },
+  'Packaged Emulsion': { type: 'Bulk', uom: 't' },
+  'Watergel': { type: 'Bulk', uom: 't' },
+  'Doped ANFO': { type: 'Bulk', uom: 't' },
+  'Site-Sensitised Emulsion': { type: 'Bulk', uom: 't' },
+  'Low-Density ANFO': { type: 'Bulk', uom: 't' },
+  'Aluminised ANFO': { type: 'Bulk', uom: 't' },
+  'Repumpable Emulsion': { type: 'Bulk', uom: 't' },
+  'Electronic Detonator': { type: 'Initiating Systems', uom: 'ea' },
+  'Cast Booster 400g': { type: 'Initiating Systems', uom: 'ea' },
+  'Cast Booster 150g': { type: 'Initiating Systems', uom: 'ea' },
+  'Detonating Cord 10 g/m': { type: 'Initiating Systems', uom: 'm' },
+  'Detonating Cord 5 g/m': { type: 'Initiating Systems', uom: 'm' },
+  'Shock Tube Detonator': { type: 'Initiating Systems', uom: 'ea' },
+  'Surface Connector': { type: 'Initiating Systems', uom: 'ea' },
+  'Plain Detonator': { type: 'Initiating Systems', uom: 'ea' },
+  'Safety Fuse': { type: 'Initiating Systems', uom: 'm' },
+  'DTH Delay': { type: 'Initiating Systems', uom: 'ea' },
+  'Trunkline Delay': { type: 'Initiating Systems', uom: 'ea' },
+  'Primer Cartridge': { type: 'Initiating Systems', uom: 'ea' },
 };
 
 const DELIVERIES = [
@@ -120,10 +148,35 @@ const STOCK_BASE = {
   '2025': {
     'Ammonium Nitrate (AN)': { opening: 142.0, capacity: 200 },
     'Ammonium Nitrate Emulsion (ANE)': { opening: 88.0, capacity: 150 },
-    'Bulk Emulsion': { opening: 40.0, capacity: 120 },
+    'Bulk Emulsion': { opening: 60.0, capacity: 120 }, // MATCHES FORECAST
     'Prill': { opening: 54.0, capacity: 120 },
     'Detonator — 1.5m, 0.02s': { opening: 4200, capacity: 6000 },
     'Booster — 400g': { opening: 1500, capacity: 3000 },
+    'AN Prill': { opening: 12, capacity: 100 },
+    'ANFO': { opening: 380, capacity: 500 },
+    'Heavy ANFO 30:70': { opening: 95, capacity: 200 },
+    'Heavy ANFO 40:60': { opening: 40, capacity: 100 },
+    'Heavy ANFO 50:50': { opening: 14, capacity: 100 },
+    'Pumpable Emulsion': { opening: 60, capacity: 150 },
+    'Packaged Emulsion': { opening: 8, capacity: 50 },
+    'Watergel': { opening: 30, capacity: 100 },
+    'Doped ANFO': { opening: 5, capacity: 50 },
+    'Site-Sensitised Emulsion': { opening: 120, capacity: 250 },
+    'Low-Density ANFO': { opening: 6, capacity: 50 },
+    'Aluminised ANFO': { opening: 50, capacity: 100 },
+    'Repumpable Emulsion': { opening: 18, capacity: 100 },
+    'Electronic Detonator': { opening: 1800, capacity: 3000 },
+    'Cast Booster 400g': { opening: 950, capacity: 2000 },
+    'Cast Booster 150g': { opening: 2200, capacity: 4000 },
+    'Detonating Cord 10 g/m': { opening: 2400, capacity: 5000 },
+    'Detonating Cord 5 g/m': { opening: 600, capacity: 1500 },
+    'Shock Tube Detonator': { opening: 300, capacity: 1000 },
+    'Surface Connector': { opening: 80, capacity: 300 },
+    'Plain Detonator': { opening: 200, capacity: 500 },
+    'Safety Fuse': { opening: 1500, capacity: 3000 },
+    'DTH Delay': { opening: 90, capacity: 300 },
+    'Trunkline Delay': { opening: 40, capacity: 200 },
+    'Primer Cartridge': { opening: 5000, capacity: 10000 },
   },
   '2010': {
     'Ammonium Nitrate (AN)': { opening: 90.0, capacity: 160 },

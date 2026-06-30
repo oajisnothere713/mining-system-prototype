@@ -1,12 +1,22 @@
 import React from 'react';
 import { CalendarX, Bell, AlertTriangle, Check, X } from 'lucide-react';
 
-export default function CapacityTab() {
+export default function CapacityTab({ forecast }) {
   const capData = [
-    { label: 'Week 1', dates: '23–27 Jun', truckUsed: 3, truckTotal: 3, crewUsed: 6, crewTotal: 8, dockets: 11, badge: 'No vehicle capacity — cannot take new jobs', badgeFg: '#C0392B', badgeBg: '#FAE9E7', badgeIcon: X },
-    { label: 'Week 2', dates: '30 Jun–4 Jul', truckUsed: 2, truckTotal: 3, crewUsed: 5, crewTotal: 8, dockets: 9, badge: '1 truck · 3 crew slots open', badgeFg: '#A66A0C', badgeBg: '#FAF2E0', badgeIcon: AlertTriangle },
-    { label: 'Week 3', dates: '7–11 Jul', truckUsed: 2, truckTotal: 3, crewUsed: 4, crewTotal: 8, dockets: 10, badge: '1 truck · 4 crew available', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
-    { label: 'Week 4', dates: '14–18 Jul', truckUsed: 1, truckTotal: 3, crewUsed: 2, crewTotal: 8, dockets: 8, badge: '2 trucks · 6 crew — plenty of room', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
+    { 
+      label: 'Week 1', dates: '23–27 Jun', 
+      truckUsed: Math.ceil(forecast.capacity?.utilized / 100) || 3, 
+      truckTotal: Math.ceil((forecast.capacity?.totalCapacity || 500) / 100) || 5, 
+      crewUsed: 6, crewTotal: 8, 
+      dockets: 11, 
+      badge: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? 'Nearing capacity limits' : 'Capacity healthy', 
+      badgeFg: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? '#C0392B' : '#2E7D46', 
+      badgeBg: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? '#FAE9E7' : '#EAF3EC', 
+      badgeIcon: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? AlertTriangle : Check 
+    },
+    { label: 'Week 2', dates: '30 Jun–4 Jul', truckUsed: 2, truckTotal: 5, crewUsed: 5, crewTotal: 8, dockets: 9, badge: '3 truck · 3 crew slots open', badgeFg: '#A66A0C', badgeBg: '#FAF2E0', badgeIcon: AlertTriangle },
+    { label: 'Week 3', dates: '7–11 Jul', truckUsed: 2, truckTotal: 5, crewUsed: 4, crewTotal: 8, dockets: 10, badge: '3 truck · 4 crew available', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
+    { label: 'Week 4', dates: '14–18 Jul', truckUsed: 1, truckTotal: 5, crewUsed: 2, crewTotal: 8, dockets: 8, badge: '4 trucks · 6 crew — plenty of room', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
   ];
 
   const utilColor = (p) => p >= 100 ? '#C0392B' : p >= 65 ? '#D08A1A' : '#2E7D46';
@@ -18,6 +28,7 @@ export default function CapacityTab() {
   });
 
   const gaps = [
+    ...(forecast.capacity?.gaps || []).map(g => ({ name: 'Capacity Warning', detail: g })),
     { name: 'Aggregate Resources Pvt Ltd', detail: 'No bookings in Week 3 — usual pattern is 2 deliveries/week. Last contact 3 weeks ago.' },
     { name: 'Satpura Stone Works', detail: 'No bookings in Week 2 or Week 3. Had 1–2 deliveries/week for the past 6 weeks.' },
   ];

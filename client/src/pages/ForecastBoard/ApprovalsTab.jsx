@@ -1,18 +1,26 @@
 import React from 'react';
 import { Table, FileText, FilePlus } from 'lucide-react';
 
-export default function ApprovalsTab({ rows, cat, setCat }) {
+export default function ApprovalsTab({ rows, cat, setCat, forecast }) {
   const stMeta = {
     created: { label: 'Orders Created', fg: '#2E7D46', bg: '#EAF3EC' },
     review: { label: 'Under Review', fg: '#A66A0C', bg: '#FAF2E0' },
     draft: { label: 'Draft', fg: '#5B6470', bg: '#EEF0F2' }
   };
 
+  const currentStatus = forecast.plan?.status || 'draft';
+
   const confColor = (c) => c >= 90 ? '#2E7D46' : c >= 60 ? '#D08A1A' : '#C0392B';
 
   const weekMeta = [
-    { label: 'Week 1', dates: '23 – 27 Jun', status: 'created', conf: 97, firmNote: 'Nearly all bookings carry a confirmed PO + assigned truck.' },
-    { label: 'Week 2', dates: '30 Jun – 4 Jul', status: 'review', conf: 78, firmNote: 'Mostly confirmed; 2 bookings still unassigned, 1 PO pending.' },
+    { 
+      label: 'Week 1', 
+      dates: '23 – 27 Jun', 
+      status: currentStatus, 
+      conf: 97, 
+      firmNote: currentStatus === 'created' ? 'Orders successfully submitted to ERP.' : 'Nearly all bookings carry a confirmed PO + assigned truck.' 
+    },
+    { label: 'Week 2', dates: '30 Jun – 4 Jul', status: currentStatus === 'created' ? 'created' : 'review', conf: 78, firmNote: 'Mostly confirmed; 2 bookings still unassigned, 1 PO pending.' },
     { label: 'Week 3', dates: '7 – 11 Jul', status: 'draft', conf: 60, firmNote: 'Half soft bookings; no resources assigned yet.' },
     { label: 'Week 4', dates: '14 – 18 Jul', status: 'draft', conf: 35, firmNote: 'Mostly tentative; this horizon historically still shifts a lot.' },
   ];
@@ -57,7 +65,14 @@ export default function ApprovalsTab({ rows, cat, setCat }) {
               <div style={{ width: `${w.conf}%`, height: '100%', background: w.confColor, borderRadius: '4px' }}></div>
             </div>
             <div style={{ fontSize: '11px', color: '#9098A1', marginTop: '8px', lineHeight: 1.4 }}>{w.firmNote}</div>
-            <button style={w.btnStyle}>
+            <button 
+              style={w.btnStyle}
+              onClick={() => {
+                if (!created && (w.status === 'review' || w.status === 'draft')) {
+                  forecast.updatePlanStatus('created');
+                }
+              }}
+            >
               <w.btnIcon size={15} /> {w.btnLabel}
             </button>
           </div>

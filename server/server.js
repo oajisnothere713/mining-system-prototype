@@ -15,6 +15,7 @@ const stockRoutes = require('./routes/stockRoutes/stockRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const scheduleRoutes = require('./routes/scheduleRoutes/scheduleRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const forecastRoutes = require('./routes/forecastRoutes/forecastRoutes');
 
 // Connect to MongoDB
 connectDB();
@@ -34,6 +35,7 @@ app.use('/api/stock', stockRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/forecast', forecastRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
