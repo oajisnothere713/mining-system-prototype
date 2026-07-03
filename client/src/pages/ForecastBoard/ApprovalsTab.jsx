@@ -32,17 +32,27 @@ export default function ApprovalsTab({ rows, cat, setCat, forecast }) {
 
   const confColor = (c) => c >= 90 ? '#2E7D46' : c >= 60 ? '#D08A1A' : '#C0392B';
 
+  const getFirmNote = (conf) => {
+    if (conf >= 90) return 'Solidly confirmed; products requested and resources fully assigned.';
+    if (conf >= 60) return 'Moderately firm; products requested but some resources pending.';
+    if (conf >= 30) return 'Soft demand; missing product details or resource assignments.';
+    if (conf > 0) return 'Highly tentative; mostly empty placeholder bookings.';
+    return 'No bookings scheduled for this week.';
+  };
+
+  const capWeeks = forecast.capacity?.weeks || Array(4).fill({ firmness: 0 });
+
   const weekMeta = [
     { 
       label: 'Week 1', 
       dates: weekDates[0], 
       status: currentStatus, 
-      conf: 97, 
-      firmNote: currentStatus === 'created' ? 'Orders successfully submitted to ERP.' : 'Nearly all bookings carry a confirmed PO + assigned truck.' 
+      conf: capWeeks[0].firmness || 0, 
+      firmNote: currentStatus === 'created' ? 'Orders successfully submitted to ERP.' : getFirmNote(capWeeks[0].firmness || 0) 
     },
-    { label: 'Week 2', dates: weekDates[1], status: currentStatus === 'created' ? 'created' : 'review', conf: 78, firmNote: 'Mostly confirmed; 2 bookings still unassigned, 1 PO pending.' },
-    { label: 'Week 3', dates: weekDates[2], status: 'draft', conf: 60, firmNote: 'Half soft bookings; no resources assigned yet.' },
-    { label: 'Week 4', dates: weekDates[3], status: 'draft', conf: 35, firmNote: 'Mostly tentative; this horizon historically still shifts a lot.' },
+    { label: 'Week 2', dates: weekDates[1], status: currentStatus === 'created' ? 'created' : 'review', conf: capWeeks[1].firmness || 0, firmNote: getFirmNote(capWeeks[1].firmness || 0) },
+    { label: 'Week 3', dates: weekDates[2], status: 'draft', conf: capWeeks[2].firmness || 0, firmNote: getFirmNote(capWeeks[2].firmness || 0) },
+    { label: 'Week 4', dates: weekDates[3], status: 'draft', conf: capWeeks[3].firmness || 0, firmNote: getFirmNote(capWeeks[3].firmness || 0) },
   ];
 
   const weeks = weekMeta.map((w, i) => {

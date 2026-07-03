@@ -85,14 +85,9 @@ export default function WorkbenchTab({
   });
 
   // Use real accuracy from the API if available
-  const materialAccuracy = forecast.accuracy?.find(a => a.materialName === sel.n)?.accuracy || 85;
-  const accSeq = [
-    Math.max(0, materialAccuracy - 15),
-    Math.max(0, materialAccuracy - 5),
-    Math.min(100, materialAccuracy + 2),
-    materialAccuracy
-  ];
-  const selAccAvg = Math.round(accSeq.reduce((a, b) => a + b, 0) / 4);
+  const materialAccuracyArray = forecast.accuracy?.find(a => a.materialName === sel.n)?.accuracy || [null, null, null, null];
+  const validScores = materialAccuracyArray.filter(s => s !== null);
+  const selAccAvg = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : null;
   const accV = (s) => s >= 95 ? '#2E7D46' : s >= 80 ? '#A66A0C' : '#C0392B';
   
   const selChanges = [
@@ -287,12 +282,12 @@ export default function WorkbenchTab({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', paddingBottom: '13px', borderBottom: '1px solid #F0F1F3', marginBottom: '13px' }}>
               <div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: accV(selAccAvg), letterSpacing: '-0.5px' }}>{selAccAvg}%</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: selAccAvg !== null ? accV(selAccAvg) : '#9098A1', letterSpacing: '-0.5px' }}>{selAccAvg !== null ? `${selAccAvg}%` : '-'}</div>
                 <div style={{ fontSize: '11px', color: '#5B6470' }}>4-wk avg accuracy</div>
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '5px', height: '38px' }}>
-                {accSeq.map((s, i) => (
-                  <div key={i} style={{ flex: 1, background: accV(s), borderRadius: '3px 3px 0 0', height: `${(s - 70) / 30 * 100}%` }}></div>
+                {materialAccuracyArray.map((s, i) => (
+                  <div key={i} style={{ flex: 1, background: s !== null ? accV(s) : '#EEF0F2', borderRadius: '3px 3px 0 0', height: s !== null ? `${Math.max(10, (s - 70) / 30 * 100)}%` : '10%' }}></div>
                 ))}
               </div>
             </div>
