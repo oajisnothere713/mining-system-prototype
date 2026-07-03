@@ -43,7 +43,25 @@ export default function WorkbenchTab({
 
   const maxW = Math.max(...sel.w, 1);
   const weekLabels = ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'];
-  const weekDates = ['23–27 Jun', '30–4 Jul', '7–11 Jul', '14–18 Jul'];
+  
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 is Sunday
+  const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+
+  const weekDates = Array.from({ length: 4 }).map((_, i) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() + (i * 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()}–${end.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}`;
+    } else {
+      return `${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}–${end.getDate()} ${end.toLocaleDateString('en-US', { month: 'short' })}`;
+    }
+  });
   
   const weekBars = sel.w.map((v, i) => ({
     wk: weekLabels[i],

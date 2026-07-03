@@ -1,17 +1,38 @@
 import React from 'react';
 import { TrendingUp, LineChart } from 'lucide-react';
 
-export default function AccuracyTab({ forecast }) {
+export default function AccuracyTab({ forecast, bulkRows }) {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 is Sunday
+  const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+
+  const pastWeekDates = Array.from({ length: 4 }).map((_, i) => {
+    // i=0 is Wk-4, i=1 is Wk-3, i=2 is Wk-2, i=3 is Wk-1
+    const weeksAgo = 4 - i;
+    const start = new Date(monday);
+    start.setDate(monday.getDate() - (weeksAgo * 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6); 
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()}–${end.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}`;
+    } else {
+      return `${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}–${end.getDate()} ${end.toLocaleDateString('en-US', { month: 'short' })}`;
+    }
+  });
+
   const accVerdict = (s) => 
     s >= 95 ? { fg: '#2E7D46', bg: '#EAF3EC', border: '#C9E0CF', v: 'On target' } :
     s >= 80 ? { fg: '#A66A0C', bg: '#FAF2E0', border: '#EFE2C2', v: 'Acceptable' } :
               { fg: '#C0392B', bg: '#FAE9E7', border: '#F0D9D6', v: 'Needs review' };
 
   const accWeekScores = [
-    { label: 'Wk −4', dates: '26–30 May', score: 82 },
-    { label: 'Wk −3', dates: '2–6 Jun', score: 89 },
-    { label: 'Wk −2', dates: '9–13 Jun', score: 94 },
-    { label: 'Wk −1', dates: '16–20 Jun', score: 97 }
+    { label: 'Wk −4', dates: pastWeekDates[0], score: 82 },
+    { label: 'Wk −3', dates: pastWeekDates[1], score: 89 },
+    { label: 'Wk −2', dates: pastWeekDates[2], score: 94 },
+    { label: 'Wk −1', dates: pastWeekDates[3], score: 97 }
   ];
 
   const accWeeks = accWeekScores.map(w => {

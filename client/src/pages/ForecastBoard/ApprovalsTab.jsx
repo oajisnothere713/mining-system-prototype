@@ -8,21 +8,41 @@ export default function ApprovalsTab({ rows, cat, setCat, forecast }) {
     draft: { label: 'Draft', fg: '#5B6470', bg: '#EEF0F2' }
   };
 
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 is Sunday
+  const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+
+  const weekDates = Array.from({ length: 4 }).map((_, i) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() + (i * 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()} – ${end.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}`;
+    } else {
+      return `${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })} – ${end.getDate()} ${end.toLocaleDateString('en-US', { month: 'short' })}`;
+    }
+  });
+
   const currentStatus = forecast.plan?.status || 'draft';
+  const confidence = forecast.plan?.confidence || 85;
 
   const confColor = (c) => c >= 90 ? '#2E7D46' : c >= 60 ? '#D08A1A' : '#C0392B';
 
   const weekMeta = [
     { 
       label: 'Week 1', 
-      dates: '23 – 27 Jun', 
+      dates: weekDates[0], 
       status: currentStatus, 
       conf: 97, 
       firmNote: currentStatus === 'created' ? 'Orders successfully submitted to ERP.' : 'Nearly all bookings carry a confirmed PO + assigned truck.' 
     },
-    { label: 'Week 2', dates: '30 Jun – 4 Jul', status: currentStatus === 'created' ? 'created' : 'review', conf: 78, firmNote: 'Mostly confirmed; 2 bookings still unassigned, 1 PO pending.' },
-    { label: 'Week 3', dates: '7 – 11 Jul', status: 'draft', conf: 60, firmNote: 'Half soft bookings; no resources assigned yet.' },
-    { label: 'Week 4', dates: '14 – 18 Jul', status: 'draft', conf: 35, firmNote: 'Mostly tentative; this horizon historically still shifts a lot.' },
+    { label: 'Week 2', dates: weekDates[1], status: currentStatus === 'created' ? 'created' : 'review', conf: 78, firmNote: 'Mostly confirmed; 2 bookings still unassigned, 1 PO pending.' },
+    { label: 'Week 3', dates: weekDates[2], status: 'draft', conf: 60, firmNote: 'Half soft bookings; no resources assigned yet.' },
+    { label: 'Week 4', dates: weekDates[3], status: 'draft', conf: 35, firmNote: 'Mostly tentative; this horizon historically still shifts a lot.' },
   ];
 
   const weeks = weekMeta.map((w, i) => {

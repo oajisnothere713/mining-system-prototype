@@ -2,22 +2,38 @@ import React from 'react';
 import { CalendarX, Bell, AlertTriangle, Check, X } from 'lucide-react';
 
 export default function CapacityTab({ forecast }) {
-  const capData = [
-    { 
-      label: 'Week 1', dates: '23–27 Jun', 
-      truckUsed: Math.ceil(forecast.capacity?.utilized / 100) || 3, 
-      truckTotal: Math.ceil((forecast.capacity?.totalCapacity || 500) / 100) || 5, 
-      crewUsed: 6, crewTotal: 8, 
-      dockets: 11, 
-      badge: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? 'Nearing capacity limits' : 'Capacity healthy', 
-      badgeFg: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? '#C0392B' : '#2E7D46', 
-      badgeBg: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? '#FAE9E7' : '#EAF3EC', 
-      badgeIcon: forecast.capacity?.utilized > forecast.capacity?.totalCapacity * 0.9 ? AlertTriangle : Check 
-    },
-    { label: 'Week 2', dates: '30 Jun–4 Jul', truckUsed: 2, truckTotal: 5, crewUsed: 5, crewTotal: 8, dockets: 9, badge: '3 truck · 3 crew slots open', badgeFg: '#A66A0C', badgeBg: '#FAF2E0', badgeIcon: AlertTriangle },
-    { label: 'Week 3', dates: '7–11 Jul', truckUsed: 2, truckTotal: 5, crewUsed: 4, crewTotal: 8, dockets: 10, badge: '3 truck · 4 crew available', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
-    { label: 'Week 4', dates: '14–18 Jul', truckUsed: 1, truckTotal: 5, crewUsed: 2, crewTotal: 8, dockets: 8, badge: '4 trucks · 6 crew — plenty of room', badgeFg: '#2E7D46', badgeBg: '#EAF3EC', badgeIcon: Check },
-  ];
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 is Sunday
+  const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+
+  const weekDates = Array.from({ length: 4 }).map((_, i) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() + (i * 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    
+    if (start.getMonth() === end.getMonth()) {
+      return `${start.getDate()}–${end.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}`;
+    } else {
+      return `${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'short' })}–${end.getDate()} ${end.toLocaleDateString('en-US', { month: 'short' })}`;
+    }
+  });
+
+  const capData = forecast.capacity?.weeks?.map((w, i) => ({
+    label: `Week ${i + 1}`,
+    dates: weekDates[i],
+    truckUsed: w.truckUsed,
+    truckTotal: w.truckTotal,
+    crewUsed: w.crewUsed,
+    crewTotal: w.crewTotal,
+    dockets: w.dockets,
+    badge: w.badge,
+    badgeFg: w.badgeFg,
+    badgeBg: w.badgeBg,
+    badgeIcon: w.badgeFg === '#C0392B' ? AlertTriangle : w.badgeFg === '#A66A0C' ? AlertTriangle : Check
+  })) || [];
 
   const utilColor = (p) => p >= 100 ? '#C0392B' : p >= 65 ? '#D08A1A' : '#2E7D46';
 
@@ -27,17 +43,9 @@ export default function CapacityTab({ forecast }) {
     return { ...c, truckPct: tp, crewPct: cp, truckColor: utilColor(tp), crewColor: utilColor(cp) };
   });
 
-  const gaps = [
-    ...(forecast.capacity?.gaps || []).map(g => ({ name: 'Capacity Warning', detail: g })),
-    { name: 'Aggregate Resources Pvt Ltd', detail: 'No bookings in Week 3 — usual pattern is 2 deliveries/week. Last contact 3 weeks ago.' },
-    { name: 'Satpura Stone Works', detail: 'No bookings in Week 2 or Week 3. Had 1–2 deliveries/week for the past 6 weeks.' },
-  ];
+  const gaps = forecast.capacity?.gaps || [];
 
-  const changes = [
-    { ref: 'BL-2025-047', cust: 'JK Cement', detail: 'ANFO reduced from 45t → 30t', impact: '↓ Week 4 ANFO total drops 15t', impactColor: '#A66A0C', border: '#EFE7D6', bg: '#FBFAF7' },
-    { ref: 'BL-2025-048', cust: 'Aggregate Resources', detail: 'Booking cancelled', impact: '↓ Week 3 loses 12t Bulk Emulsion', impactColor: '#A66A0C', border: '#EFE7D6', bg: '#FBFAF7' },
-    { ref: 'BL-2025-052', cust: 'JK Cement', detail: 'New booking added after Week 1 orders were created', impact: '⚠ Week 1 Planned Orders may need amendment', impactColor: '#C0392B', border: '#F0D9D6', bg: '#FCF2F1' },
-  ];
+  const changes = forecast.capacity?.changes || [];
 
   return (
     <div className="fc-scroll-area">
@@ -83,7 +91,11 @@ export default function CapacityTab({ forecast }) {
           </div>
           <div style={{ padding: '14px 16px' }}>
             <div style={{ fontSize: '12px', color: '#5B6470', marginBottom: '12px' }}>Customers with unusual breaks in their booking pattern over the next 4 weeks.</div>
-            {gaps.map((g, i) => (
+            {gaps.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: '#9098A1', fontSize: '12.5px', background: '#FBFBFC', borderRadius: '11px', border: '1px dashed #E1E4E8' }}>
+                No unusual customer gaps detected at this time.
+              </div>
+            ) : gaps.map((g, i) => (
               <div key={i} style={{ display: 'flex', gap: '11px', padding: '12px 13px', borderRadius: '11px', background: '#FBFAF7', border: '1px solid #EFE7D6', marginBottom: '10px' }}>
                 <AlertTriangle size={16} color="#D08A1A" style={{ flexShrink: 0, marginTop: '1px' }} />
                 <div>
@@ -100,7 +112,11 @@ export default function CapacityTab({ forecast }) {
             <Bell size={16} color="#9098A1" /> Changes since last review
           </div>
           <div style={{ padding: '14px 16px' }}>
-            {changes.map((c, i) => (
+            {changes.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: '#9098A1', fontSize: '12.5px', background: '#FBFBFC', borderRadius: '11px', border: '1px dashed #E1E4E8' }}>
+                No bookings have been modified since your last review.
+              </div>
+            ) : changes.map((c, i) => (
               <div key={i} style={{ border: `1px solid ${c.border}`, background: c.bg, borderRadius: '11px', padding: '12px 14px', marginBottom: '10px' }}>
                 <div style={{ fontSize: '12.5px', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>
                   {c.ref} <span style={{ fontFamily: "'DM Sans', sans-serif", color: '#5B6470', fontWeight: 600 }}>· {c.cust}</span>

@@ -21,11 +21,16 @@ exports.getMaterials = async (req, res, next) => {
     const plantCode = plantDoc ? plantDoc.code : null;
     const bookings = plantCode ? await Booking.find({ plantCode }) : [];
     
-    // Define 4-week window for forecast demand
+    // Define 4-week calendar window for forecast demand (Monday to Sunday)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const fourWeeksLater = new Date(today);
-    fourWeeksLater.setDate(today.getDate() + 28);
+    const dayOfWeek = today.getDay(); // 0 is Sunday
+    const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+
+    const fourWeeksLater = new Date(monday);
+    fourWeeksLater.setDate(monday.getDate() + 28);
     
     // Map each forecast material to its real-time stock
     const materials = await Promise.all(forecastMaterials.map(async (fm) => {
@@ -39,7 +44,7 @@ exports.getMaterials = async (req, res, next) => {
         const bDate = new Date(b.date);
         
         // Filter: Only include bookings within the upcoming 4-week forecast window
-        if (bDate < today || bDate > fourWeeksLater) {
+        if (bDate < monday || bDate > fourWeeksLater) {
           return;
         }
 
@@ -172,25 +177,202 @@ exports.getCapacity = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Plant ID is required' });
     }
 
-    // Dynamically derive capacity data based on materials
-    const materialsRaw = await ForecastMaterial.find({ plant }).populate('material');
-    const materials = materialsRaw.filter(m => m.material?.type === 'Bulk');
-    
-    // Sum total bulk volume for week 0 as the primary requirement
-    const requiredVolume = materials.reduce((acc, m) => acc + (m.weeklyDemand[0] || 0), 0);
-    
-    // Simulate capacity limits based on requirements for the prototype
-    const totalCapacity = Math.max(requiredVolume * 1.2, 500); // 20% buffer or min 500t
-    
+    const plantDoc = await Plant.findById(plant);
+    const plantCode = plantDoc ? plantDoc.code : null;
+    const bookings = plantCode ? await Booking.find({ plantCode }) : [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday
+    const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+
+    const weeksData = Array.from({ length: 4 }).map((_, i) => {
+      const start = new Date(monday);
+      start.setDate(monday.getDate() + (i * 7));
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+
+      let weeklyDockets = 0;
+      let unassignedTruckDockets = 0;
+      let unassignedCrewDockets = 0;
+      const truckSet = new Set();
+      const crewSet = new Set();
+
+      bookings.forEach(b => {
+        if (!b.date) return;
+        const bDate = new Date(b.date);
+        if (bDate >= start && bDate <= end) {
+          (b.deliveryDockets || []).forEach(d => {
+            // Do not count capacity for already delivered dockets
+            if (d.status === 'Delivered') return;
+            
+            weeklyDockets++;
+            
+            if (d.vehicleId) {
+              truckSet.add(d.vehicleId);
+            } else {
+              unassignedTruckDockets++;
+            }
+            
+            const hasCrew = (d.operatorIds && d.operatorIds.length > 0) || (d.shotfirerIds && d.shotfirerIds.length > 0);
+            if (hasCrew) {
+              (d.operatorIds || []).forEach(id => crewSet.add(id));
+              (d.shotfirerIds || []).forEach(id => crewSet.add(id));
+            } else {
+              unassignedCrewDockets++;
+            }
+          });
+        }
+      });
+
+      // Combine explicitly assigned unique resources with a heuristic for unassigned ones
+      const truckUsed = truckSet.size + Math.ceil(unassignedTruckDockets / 4);
+      const crewUsed = crewSet.size + Math.ceil(unassignedCrewDockets / 2);
+      const truckTotal = 5;
+      const crewTotal = 8;
+
+      let badge, badgeFg, badgeBg;
+      const util = truckUsed / truckTotal;
+      
+      if (util > 0.8) {
+        badge = 'Nearing capacity limits';
+        badgeFg = '#C0392B';
+        badgeBg = '#FAE9E7';
+      } else if (util > 0.5) {
+        badge = `${truckTotal - truckUsed} truck · ${crewTotal - crewUsed} crew slots open`;
+        badgeFg = '#A66A0C';
+        badgeBg = '#FAF2E0';
+      } else {
+        badge = 'Capacity healthy';
+        badgeFg = '#2E7D46';
+        badgeBg = '#EAF3EC';
+      }
+
+      return {
+        dockets: weeklyDockets,
+        truckUsed,
+        truckTotal,
+        crewUsed,
+        crewTotal,
+        badge,
+        badgeFg,
+        badgeBg
+      };
+    });
+
     const capacityData = {
-      totalCapacity: Math.round(totalCapacity),
-      utilized: requiredVolume,
+      weeks: weeksData,
       gaps: [],
     };
 
-    if (requiredVolume > totalCapacity * 0.9) {
-      capacityData.gaps.push('Approaching maximum production capacity for Week 1');
+    if (weeksData[0].truckUsed > weeksData[0].truckTotal * 0.9) {
+      capacityData.gaps.push({ 
+        name: 'Capacity Warning', 
+        detail: 'Approaching maximum truck capacity for Week 1' 
+      });
     }
+
+    // Predictive Customer Gap Analysis
+    const eightWeeksAgo = new Date(today);
+    eightWeeksAgo.setDate(today.getDate() - (8 * 7));
+
+    const customerHistory = {}; 
+    bookings.forEach(b => {
+      if (!b.date || !b.customerName) return;
+      const bDate = new Date(b.date);
+      if (bDate >= eightWeeksAgo && bDate < today) {
+        if (!customerHistory[b.customerName]) {
+          customerHistory[b.customerName] = { dockets: 0, lastDate: bDate };
+        }
+        customerHistory[b.customerName].dockets += (b.deliveryDockets || []).length;
+        if (bDate > customerHistory[b.customerName].lastDate) {
+          customerHistory[b.customerName].lastDate = bDate;
+        }
+      }
+    });
+
+    Object.keys(customerHistory).forEach(cName => {
+      const hist = customerHistory[cName];
+      const avgWeeklyDockets = hist.dockets / 8; // average over past 8 weeks
+      
+      // If customer usually orders ~1+ docket per week
+      if (avgWeeklyDockets >= 0.8) {
+        const futureWeeklyDockets = [0, 0, 0, 0];
+        
+        bookings.forEach(b => {
+          if (b.customerName !== cName || !b.date) return;
+          const bDate = new Date(b.date);
+          const diffDays = (bDate - monday) / (1000 * 60 * 60 * 24);
+          if (diffDays >= 0 && diffDays < 28) {
+            const wk = Math.floor(diffDays / 7);
+            if (wk >= 0 && wk < 4) {
+              futureWeeklyDockets[wk] += (b.deliveryDockets || []).length;
+            }
+          }
+        });
+
+        const emptyWeeks = [];
+        for (let i = 0; i < 4; i++) {
+          if (futureWeeklyDockets[i] === 0) emptyWeeks.push(`Week ${i + 1}`);
+        }
+
+        if (emptyWeeks.length > 0) {
+          const daysSinceLast = Math.floor((today - hist.lastDate) / (1000 * 60 * 60 * 24));
+          const avgFormatted = Math.round(avgWeeklyDockets * 10) / 10;
+          
+          let weekStr = emptyWeeks.join(' and ');
+          if (emptyWeeks.length > 2) {
+             weekStr = emptyWeeks.slice(0, -1).join(', ') + ', and ' + emptyWeeks[emptyWeeks.length - 1];
+          }
+          
+          capacityData.gaps.push({
+            name: cName,
+            detail: `No bookings in ${weekStr}. Usual pattern is ${avgFormatted} deliveries/week. Last booking was ${daysSinceLast} days ago.`
+          });
+        }
+
+        // Overbooking Alert
+        for (let i = 0; i < 4; i++) {
+          if (futureWeeklyDockets[i] >= avgWeeklyDockets * 2 && futureWeeklyDockets[i] > 1) {
+            const avgFormatted = Math.round(avgWeeklyDockets * 10) / 10;
+            capacityData.gaps.push({
+              name: cName,
+              detail: `Unusual spike in Week ${i + 1}. Scheduled ${futureWeeklyDockets[i]} deliveries (usual pattern is ${avgFormatted} deliveries/week).`
+            });
+          }
+        }
+      }
+    });
+
+    // Changes Since Last Review
+    const plan = await ForecastPlan.findOne({ plant });
+    const lastReviewDate = plan && plan.updatedAt ? plan.updatedAt : new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const recentChanges = [];
+    
+    bookings.forEach(b => {
+      if (!b.date || !b.updatedAt) return;
+      const bDate = new Date(b.date);
+      const bUpdated = new Date(b.updatedAt);
+      const diffDays = (bDate - monday) / (1000 * 60 * 60 * 24);
+      
+      // If booking is in the next 4 weeks and was modified since the last plan review
+      if (diffDays >= 0 && diffDays < 28 && bUpdated > lastReviewDate) {
+        recentChanges.push({
+          ref: b.blastNumber,
+          cust: b.customerName,
+          detail: 'Booking recently modified',
+          impact: 'Review schedule for changes',
+          impactColor: '#A66A0C',
+          border: '#EFE7D6',
+          bg: '#FBFAF7'
+        });
+      }
+    });
+    
+    capacityData.changes = recentChanges;
 
     res.json({ success: true, data: capacityData });
   } catch (error) {
