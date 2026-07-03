@@ -57,10 +57,19 @@ export default function ForecastBoardPage() {
   const critCount = rows.filter(r => r.level === 'critical').length;
   const reviewCount = forecast.plan?.status === 'review' ? 1 : forecast.plan?.status === 'draft' ? 1 : 0;
 
+  const getLastWeekAccuracy = () => {
+    if (!forecast.accuracy || forecast.accuracy.length === 0) return '-';
+    // Wk-1 is index 3 in the accuracy array [Wk-4, Wk-3, Wk-2, Wk-1]
+    const validScores = forecast.accuracy.map(a => a.accuracy[3]).filter(s => s !== null);
+    if (validScores.length === 0) return '-';
+    const avg = Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length);
+    return `${avg}%`;
+  };
+
   const kpis = [
     { val: critCount, label: 'Critical', color: '#C0392B' },
     { val: bulkRows.reduce((a, r) => a + r.total, 0).toLocaleString('en-US'), label: 'BULK plan (t)', color: '#17191C' },
-    { val: forecast.accuracy?.length > 0 ? `${forecast.accuracy[0].accuracy}%` : '97%', label: 'Last-wk accuracy', color: '#2E7D46' },
+    { val: getLastWeekAccuracy(), label: 'Last-wk accuracy', color: '#2E7D46' },
   ];
 
   const today = new Date();

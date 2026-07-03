@@ -37,8 +37,10 @@ exports.getMaterials = async (req, res, next) => {
       // Find the most recent stock record for this plant and material
       const stockRecord = fm.material ? await Stock.findOne({ plant, material: fm.material._id }).sort({ date: -1 }) : null;
       
-      // Calculate top customers from bookings
+      // Calculate top customers and weekly demand from bookings
       const customerStats = {};
+      const calculatedDemand = [0, 0, 0, 0];
+      
       bookings.forEach(b => {
         if (!b.date) return;
         const bDate = new Date(b.date);
@@ -48,25 +50,27 @@ exports.getMaterials = async (req, res, next) => {
           return;
         }
 
-        const hasMaterial = (b.deliveryDockets || []).some(dk => 
-          (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
-        );
-        
-        if (hasMaterial) {
+        let matQty = 0;
+        (b.deliveryDockets || []).forEach(dk => {
+          (dk.products || []).forEach(p => {
+            if (p.name === fm.material?.name || p.materialId === fm.material?._id?.toString()) {
+              matQty += p.plannedQty || 0;
+            }
+          });
+        });
+
+        if (matQty > 0) {
+          const diffDays = Math.floor((bDate - monday) / (1000 * 60 * 60 * 24));
+          const wk = Math.floor(diffDays / 7);
+          if (wk >= 0 && wk < 4) {
+            calculatedDemand[wk] += matQty;
+          }
+
           const cName = b.customerName || 'Unknown Customer';
           if (!customerStats[cName]) {
             customerStats[cName] = { name: cName, site: b.shipToSite || 'Site', dockets: 0, qty: 0 };
           }
           customerStats[cName].dockets += (b.deliveryDockets || []).length;
-          
-          let matQty = 0;
-          (b.deliveryDockets || []).forEach(dk => {
-            (dk.products || []).forEach(p => {
-              if (p.name === fm.material?.name || p.materialId === fm.material?._id?.toString()) {
-                matQty += p.plannedQty || 0;
-              }
-            });
-          });
           customerStats[cName].qty += matQty;
         }
       });
@@ -88,7 +92,7 @@ exports.getMaterials = async (req, res, next) => {
         category: fm.material?.type === 'Bulk' ? 'BULK' : 'IS&PE',
         uom: fm.material?.uom || 'ea',
         stock: stockRecord ? stockRecord.closing : 0,
-        weeklyDemand: fm.weeklyDemand,
+        weeklyDemand: calculatedDemand,
         leadTime: fm.leadTime,
         customers: topCustomers,
       };
@@ -201,6 +205,9 @@ exports.getCapacity = async (req, res, next) => {
       const truckSet = new Set();
       const crewSet = new Set();
 
+      let totalScore = 0;
+      let totalDockets = 0;
+
       bookings.forEach(b => {
         if (!b.date) return;
         const bDate = new Date(b.date);
@@ -210,9 +217,16 @@ exports.getCapacity = async (req, res, next) => {
             if (d.status === 'Delivered') return;
             
             weeklyDockets++;
+            totalDockets++;
+            
+            let docketScore = 0;
+            if ((d.products && d.products.length > 0) || (d.services && d.services.length > 0)) {
+              docketScore += 50;
+            }
             
             if (d.vehicleId) {
               truckSet.add(d.vehicleId);
+              docketScore += 25;
             } else {
               unassignedTruckDockets++;
             }
@@ -221,12 +235,20 @@ exports.getCapacity = async (req, res, next) => {
             if (hasCrew) {
               (d.operatorIds || []).forEach(id => crewSet.add(id));
               (d.shotfirerIds || []).forEach(id => crewSet.add(id));
+              docketScore += 25;
             } else {
               unassignedCrewDockets++;
             }
+            
+            totalScore += docketScore;
           });
         }
       });
+
+      let firmness = 0;
+      if (totalDockets > 0) {
+        firmness = Math.round(totalScore / totalDockets);
+      }
 
       // Combine explicitly assigned unique resources with a heuristic for unassigned ones
       const truckUsed = truckSet.size + Math.ceil(unassignedTruckDockets / 4);
@@ -259,7 +281,8 @@ exports.getCapacity = async (req, res, next) => {
         crewTotal,
         badge,
         badgeFg,
-        badgeBg
+        badgeBg,
+        firmness
       };
     });
 
@@ -388,7 +411,73 @@ exports.getAccuracy = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Plant ID is required' });
     }
 
-    const accuracyData = await ForecastAccuracy.find({ plant });
+    const plantDoc = await Plant.findById(plant);
+    const plantCode = plantDoc ? plantDoc.code : null;
+    const bookings = plantCode ? await Booking.find({ plantCode }) : [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0 is Sunday
+    const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+
+    const forecastMaterials = await ForecastMaterial.find({ plant }).populate('material');
+    
+    // Past 4 weeks
+    const pastWeekDates = Array.from({ length: 4 }).map((_, i) => {
+      const weeksAgo = 4 - i;
+      const start = new Date(monday);
+      start.setDate(monday.getDate() - (weeksAgo * 7));
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return { start, end };
+    });
+
+    const accuracyData = forecastMaterials.map(fm => {
+      const scores = [null, null, null, null];
+
+      pastWeekDates.forEach((week, index) => {
+        let plannedCount = 0;
+        let deliveredCount = 0;
+
+        bookings.forEach(b => {
+          if (!b.date) return;
+          const bDate = new Date(b.date);
+          
+          if (bDate >= week.start && bDate <= week.end) {
+            const hasMaterial = (b.deliveryDockets || []).some(dk => 
+              (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
+            );
+
+            if (hasMaterial) {
+              plannedCount++;
+              
+              // We consider it executed if the booking is Delivered OR the specific dockets for this material are Delivered
+              const materialDockets = (b.deliveryDockets || []).filter(dk => 
+                (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
+              );
+              
+              const allDelivered = materialDockets.length > 0 && materialDockets.every(dk => dk.status === 'Delivered');
+              if (allDelivered || b.status === 'Delivered') {
+                deliveredCount++;
+              }
+            }
+          }
+        });
+
+        if (plannedCount > 0) {
+          scores[index] = Math.round((deliveredCount / plannedCount) * 100);
+        }
+      });
+
+      return {
+        materialName: fm.material?.name || 'Unknown',
+        accuracy: scores
+      };
+    });
+
     res.json({ success: true, data: accuracyData });
   } catch (error) {
     next(error);
