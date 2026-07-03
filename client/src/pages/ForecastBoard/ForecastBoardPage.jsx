@@ -31,8 +31,10 @@ function computeMat(m){
     s: m.stock,
     w: m.weeklyDemand,
     total, avg, cover, bal, level, sv: getSev(level),
-    stockLbl: m.stock.toLocaleString('en-US'), totalLbl: total.toLocaleString('en-US'),
-    coverLbl: cover >= 6 ? '6w+' : cover.toFixed(1) + 'w', custCount: 3
+    stockLbl: m.stock.toLocaleString('en-US'),
+    totalLbl: total.toLocaleString('en-US'),
+    coverLbl: cover >= 6 ? '6w+' : cover.toFixed(1) + 'w',
+    custCount: m.customers ? m.customers.length : 0
   };
 }
 
@@ -60,6 +62,16 @@ export default function ForecastBoardPage() {
     { val: bulkRows.reduce((a, r) => a + r.total, 0).toLocaleString('en-US'), label: 'BULK plan (t)', color: '#17191C' },
     { val: forecast.accuracy?.length > 0 ? `${forecast.accuracy[0].accuracy}%` : '97%', label: 'Last-wk accuracy', color: '#2E7D46' },
   ];
+
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 is Sunday
+  const diff = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+  
+  const endDate = new Date(monday);
+  endDate.setDate(monday.getDate() + 27);
+  const dateRangeStr = `${monday.getDate()} ${monday.toLocaleDateString('en-US', { month: 'short' })} – ${endDate.getDate()} ${endDate.toLocaleDateString('en-US', { month: 'short' })} ${endDate.getFullYear()}`;
 
   const navDefs = [
     { key: 'work', label: 'Workbench', icon: LayoutGrid, badge: critCount },
@@ -168,7 +180,7 @@ export default function ForecastBoardPage() {
             Forecast Board <span className="fc-header-depot">· {selectedPlant.name} depot</span>
           </div>
           <div className="fc-header-sub">
-            4-week rolling demand &amp; supply plan · 23 Jun – 20 Jul 2026
+            4-week rolling demand &amp; supply plan · {dateRangeStr}
           </div>
         </div>
 
