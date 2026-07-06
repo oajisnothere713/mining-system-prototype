@@ -205,7 +205,8 @@ export default function SchedulePage() {
              return [m ? m.name : s.serviceId, s.qty, m ? m.uom : ""];
           }),
           notes: dk.notes || "",
-          status: b.status || dk.status || "Planned",
+          status: b.status || "Planned",
+          dkStatus: dk.status || "Planned",
           multiDay: b.bookingType === "multi" ? { from: b.date, to: b.endDate } : null,
           recurrence: b.bookingType === "recurring" ? (b.recurrence?.frequency || b.recFreq) : null
         };
@@ -318,10 +319,10 @@ export default function SchedulePage() {
             <i className="ti ti-clock" style={{ fontSize: 11, color: SL }}></i>{b.time}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: b.status === "Submitted" ? STATUS["Planned"].fg : s.fg, background: b.status === "Submitted" ? STATUS["Planned"].bg : s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-              {b.status === "Submitted" ? "Planned" : b.status}
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: s.fg, background: s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+              {b.status}
             </span>
-            {b.status === "Submitted" && (
+            {b.dkStatus === "Submitted" && (
               <span style={{ fontSize: 9, fontWeight: 700, color: '#2B8A3E', background: '#EBFBEE', border: '1px solid #B2F2BB', padding: '2px 5px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
                 <i className="ti ti-check" style={{ fontSize: 10, strokeWidth: 3 }}></i> Submitted
               </span>
