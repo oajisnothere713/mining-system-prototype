@@ -322,7 +322,7 @@ export default function SchedulePage() {
             <span style={{ fontSize: 9.5, fontWeight: 700, color: s.fg, background: s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
               {b.status}
             </span>
-            {b.dkStatus === "Submitted" && (
+            {b.dkStatus?.toLowerCase() === "submitted" && (
               <span style={{ fontSize: 9, fontWeight: 700, color: '#2B8A3E', background: '#EBFBEE', border: '1px solid #B2F2BB', padding: '2px 5px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
                 <i className="ti ti-check" style={{ fontSize: 10, strokeWidth: 3 }}></i> Submitted
               </span>
