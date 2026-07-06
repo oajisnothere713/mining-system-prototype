@@ -313,13 +313,20 @@ export default function SchedulePage() {
           cursor: 'pointer'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: INK, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5, gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: INK, display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
             <i className="ti ti-clock" style={{ fontSize: 11, color: SL }}></i>{b.time}
           </span>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: s.fg, background: s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-            {b.status}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: b.status === "Submitted" ? STATUS["Planned"].fg : s.fg, background: b.status === "Submitted" ? STATUS["Planned"].bg : s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+              {b.status === "Submitted" ? "Planned" : b.status}
+            </span>
+            {b.status === "Submitted" && (
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#2B8A3E', background: '#EBFBEE', border: '1px solid #B2F2BB', padding: '2px 5px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <i className="ti ti-check" style={{ fontSize: 10, strokeWidth: 3 }}></i> Submitted
+              </span>
+            )}
+          </div>
         </div>
         
         {(b.recurrence || b.multiDay) && (
