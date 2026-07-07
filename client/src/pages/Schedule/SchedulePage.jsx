@@ -319,12 +319,13 @@ export default function SchedulePage() {
             <i className="ti ti-clock" style={{ fontSize: 11, color: SL }}></i>{b.time}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: s.fg, background: s.bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-              {b.status}
-            </span>
-            {b.dkStatus?.toLowerCase() === "submitted" && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#2B8A3E', background: '#EBFBEE', border: '1px solid #B2F2BB', padding: '2px 5px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <i className="ti ti-check" style={{ fontSize: 10, strokeWidth: 3 }}></i> Submitted
+            {b.dkStatus?.toLowerCase() === "submitted" ? (
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#2B8A3E', background: '#EBFBEE', border: '1px solid #B2F2BB', padding: '2px 7px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-check" style={{ fontSize: 11, strokeWidth: 3 }}></i> Submitted
+              </span>
+            ) : (
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: (STATUS[b.dkStatus] || STATUS["Planned"]).fg, background: (STATUS[b.dkStatus] || STATUS["Planned"]).bg, padding: '2px 7px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                {b.dkStatus || "Planned"}
               </span>
             )}
           </div>
