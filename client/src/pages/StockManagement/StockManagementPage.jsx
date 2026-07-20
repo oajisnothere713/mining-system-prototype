@@ -29,14 +29,29 @@ function LegendDot({ c, soft, label }) {
 export default function StockManagementPage() {
   const { selectedPlant } = usePlant();
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState('2026-06-22');
+  const formatD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayDate = new Date();
+  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
+  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
+
+  const TODAY_STR = formatD(todayDate);
+  const YEST_STR = formatD(yestDate);
+  const TOM_STR = formatD(tomDate);
+
+  const [selectedDate, setSelectedDate] = useState(TODAY_STR);
   const [popup, setPopup] = useState(null);
   const [stockData, setStockData] = useState(null);
 
   const TABS = [
-    { label: "Yesterday", date: "2026-06-21" },
-    { label: "Today", date: "2026-06-22" },
-    { label: "Tomorrow", date: "2026-06-23" },
+    { label: "Yesterday", date: YEST_STR },
+    { label: "Today", date: TODAY_STR },
+    { label: "Tomorrow", date: TOM_STR },
   ];
 
   // Try API first, fall back to client-side calculation

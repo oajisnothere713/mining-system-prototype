@@ -7,8 +7,9 @@ const forecastAccuracySchema = new mongoose.Schema(
       ref: 'Plant',
       required: true,
     },
-    materialName: {
-      type: String,
+    material: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Material',
       required: true,
     },
     accuracy: {

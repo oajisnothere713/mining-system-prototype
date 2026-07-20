@@ -104,9 +104,9 @@ const seedForecastData = async () => {
     });
 
     console.log('Seeding ForecastAccuracy...');
-    const accuracyDocs = materials.map(m => ({
+    const accuracyDocs = materialDocs.map(md => ({
       plant: plantId,
-      materialName: m.n,
+      material: md.material,
       accuracy: 85 + Math.floor(Math.random() * 15), // Random 85-99%
       weekOffset: -1
     }));
