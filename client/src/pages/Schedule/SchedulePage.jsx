@@ -5,7 +5,7 @@ import FleetPlanner from './FleetPlanner';
 import BookingForm from './BookingForm';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
-import { fetchBookings, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
+import { fetchBookings, fetchMaterials, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -157,7 +157,7 @@ export default function SchedulePage() {
   }, [plantCode]);
 
   React.useEffect(() => {
-    fetchBookings().then(() => {
+    Promise.all([fetchBookings(), fetchMaterials()]).then(() => {
       setRefreshKey(k=>k+1);
       setLoading(false);
     });

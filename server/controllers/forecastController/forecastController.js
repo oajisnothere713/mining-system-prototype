@@ -571,9 +571,9 @@ exports.seedForecastData = async (req, res, next) => {
       confidence: 85
     });
 
-    const accuracyDocs = materials.map(m => ({
+    const accuracyDocs = materialDocs.map(md => ({
       plant: plantId,
-      materialName: m.n,
+      material: md.material,
       accuracy: 85 + Math.floor(Math.random() * 15),
       weekOffset: -1
     }));

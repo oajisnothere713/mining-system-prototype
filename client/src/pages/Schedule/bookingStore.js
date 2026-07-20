@@ -103,51 +103,33 @@ Object.values(CREW_GROUPS_BY_PLANT).forEach(plantGroups => {
 });
 
 /* Product catalogue, grouped by category (generic, non-Orica) */
-export const PRODUCT_CATS = [
-  { cat: "BULK", items: [
-    { id: "BULK-ANFO",   name: "ANFO",                       uom: "t" },
-    { id: "BULK-ANFOWR", name: "ANFO (Water-Resistant)",     uom: "t" },
-    { id: "BULK-EMUL",   name: "Bulk Emulsion",              uom: "t" },
-    { id: "BULK-DOPE",   name: "Doped Emulsion Blend",       uom: "t" },
-    { id: "BULK-HA3070", name: "Heavy ANFO 30:70",           uom: "t" },
-    { id: "BULK-HA4060", name: "Heavy ANFO 40:60",           uom: "t" },
-    { id: "BULK-HA5050", name: "Heavy ANFO 50:50",           uom: "t" },
-    { id: "BULK-PUMP",   name: "Pumpable Emulsion",          uom: "t" },
-    { id: "BULK-WGEL",   name: "Watergel / Slurry",          uom: "t" },
-    { id: "BULK-PRILL",  name: "AN Prill",                   uom: "t" },
-    { id: "BULK-LDANFO", name: "Low-Density ANFO",           uom: "t" },
-    { id: "BULK-PACK",   name: "Packaged Emulsion",          uom: "t" },
-    { id: "BULK-DOPED",  name: "Doped ANFO",                 uom: "t" },
-    { id: "BULK-SSE",    name: "Site-Sensitised Emulsion",   uom: "t" },
-    { id: "BULK-ALUM",   name: "Aluminised ANFO",            uom: "t" },
-    { id: "BULK-REPUMP", name: "Repumpable Emulsion",        uom: "t" },
-  ]},
-  { cat: "IS&PE", items: [
-    { id: "IS-EDET",  name: "Electronic Detonator",                 uom: "ea" },
-    { id: "IS-ELSD",  name: "Electric Detonator (Short Delay)",     uom: "ea" },
-    { id: "IS-ELLD",  name: "Electric Detonator (Long Delay)",      uom: "ea" },
-    { id: "IS-STIH",  name: "Shock Tube Detonator",                 uom: "ea" },
-    { id: "IS-STSF",  name: "Shock-Tube Detonator (Surface/TLD)",   uom: "ea" },
-    { id: "IS-PLDET", name: "Plain Detonator",                      uom: "ea" },
-    { id: "IS-CB150", name: "Cast Booster 150g",                    uom: "ea" },
-    { id: "IS-CB400", name: "Cast Booster 400g",                    uom: "ea" },
-    { id: "IS-CB1K",  name: "Cast Booster 1kg",                     uom: "ea" },
-    { id: "IS-DC5",   name: "Detonating Cord 5 g/m",                uom: "m"  },
-    { id: "IS-DC10",  name: "Detonating Cord 10 g/m",               uom: "m"  },
-    { id: "IS-RELAY", name: "Detonating Relay / Connector",         uom: "ea" },
-    { id: "IS-SCONN", name: "Surface Connector",                    uom: "ea" },
-    { id: "IS-DTH",   name: "DTH Delay",                            uom: "ea" },
-    { id: "IS-TRUNK", name: "Trunkline Delay",                      uom: "ea" },
-    { id: "IS-PRIMER",name: "Primer Cartridge",                     uom: "ea" },
-    { id: "IS-CE32",  name: "Cartridge Emulsion 32mm",              uom: "ea" },
-    { id: "IS-CE65",  name: "Cartridge Emulsion 65mm",              uom: "ea" },
-    { id: "IS-PWG",   name: "Packaged Watergel Cartridge",          uom: "ea" },
-    { id: "IS-FUSE",  name: "Safety Fuse",                          uom: "m"  },
-  ]},
-];
+export let PRODUCT_CATS = [];
+export let PRODUCT_MAP = {};
 
-export const PRODUCT_MAP = {};
-PRODUCT_CATS.forEach(c => c.items.forEach(p => { PRODUCT_MAP[p.id] = { ...p, cat: c.cat }; }));
+export async function fetchMaterials() {
+  try {
+    const res = await fetch("/api/materials");
+    const json = await res.json();
+    if (json.success) {
+      const byType = { BULK: [], "IS&PE": [] };
+      
+      json.data.forEach(m => {
+        const cat = m.type === "Bulk" ? "BULK" : "IS&PE";
+        byType[cat].push({ id: m._id, name: m.name, uom: m.uom, cat });
+      });
+
+      PRODUCT_CATS = [
+        { cat: "BULK", items: byType.BULK },
+        { cat: "IS&PE", items: byType["IS&PE"] }
+      ];
+
+      PRODUCT_MAP = {};
+      PRODUCT_CATS.forEach(c => c.items.forEach(p => { PRODUCT_MAP[p.id] = p; }));
+    }
+  } catch (err) {
+    console.error("Network error fetching materials:", err);
+  }
+}
 
 export const SERVICES = [
   { id: "SVC-SETUP",  name: "Site Service & Setup",        uom: "ea"  },
@@ -183,124 +165,7 @@ export function rollUpStatus(dockets) {
   return "Planned";
 }
 
-/* ---------- SEED BOOKINGS (migrated to nested-docket shape) ---------- */
-/* helper to build a product line from a catalogue id */
-const P = (id, qty) => {
-  const m = PRODUCT_MAP[id];
-  return { materialId: id, name: m.name, category: m.cat, plannedQty: qty, uom: m.uom, actualQty: null };
-};
-const S = (id, qty) => {
-  const s = SERVICE_MAP[id];
-  return { serviceId: id, name: s.name, qty, uom: s.uom };
-};
 
-const STORAGE_KEY = "mining_bookings_db";
-
-const DEFAULT_BOOKINGS = [
-  { _id:"BL-2025-041", blastNumber:"BL-2025-041", plantCode:"2025", date:"2026-06-02", startTime:"04:30",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087201", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-041-01", status:"Submitted", vehicleId:"MH-12-BMD-01",
-        operatorIds:["EMP-2025-01","EMP-2025-02"], shotfirerIds:["EMP-2025-05"],
-        products:[P("BULK-EMUL",22), P("IS-EDET",400)], services:[S("SVC-SETUP",1)], notes:"", signature:null },
-    ], status:"Submitted" },
-
-  { _id:"BL-2025-042", blastNumber:"BL-2025-042", plantCode:"2025", date:"2026-06-02", startTime:"08:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087202", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-042-01", status:"Submitted", vehicleId:"MH-12-BMD-02",
-        operatorIds:["EMP-2025-03"], shotfirerIds:["EMP-2025-06"],
-        products:[P("BULK-EMUL",18)], services:[], notes:"", signature:null },
-    ], status:"Submitted" },
-
-  { _id:"BL-2025-043", blastNumber:"BL-2025-043", plantCode:"2025", date:"2026-06-03", startTime:"04:30",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087205", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-043-01", status:"Delivered", vehicleId:"MH-12-BMD-01",
-        operatorIds:["EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
-        products:[P("BULK-ANFO",24), P("IS-EDET",300)], services:[], notes:"", signature:null },
-    ], status:"Delivered" },
-
-  { _id:"BL-2025-044", blastNumber:"BL-2025-044", plantCode:"2025", date:"2026-06-03", startTime:"07:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6202", customerName:"Aggregate Resources Pvt Ltd", shipToSite:"Chittorgarh Quarry", customerPO:"4500087210", contractId:"C-ARP-23",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-044-01", status:"Delivered", vehicleId:"MH-12-BMD-02",
-        operatorIds:["EMP-2025-04"], shotfirerIds:["EMP-2025-06"],
-        products:[P("BULK-EMUL",15)], services:[], notes:"", signature:null },
-    ], status:"Delivered" },
-
-  /* Multi-day blast with TWO dockets (two vehicles, same blast number) */
-  { _id:"BL-2025-045", blastNumber:"BL-2025-045", plantCode:"2025", date:"2026-06-04", startTime:"04:30",
-    bookingType:"multi", endDate:"2026-06-05", recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087215", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-045-01", status:"In Progress", vehicleId:"MH-12-BMD-01",
-        operatorIds:["EMP-2025-02","EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
-        products:[P("BULK-EMUL",42), P("IS-CB400",400)], services:[S("SVC-BMDOP",2)], notes:"", signature:null },
-      { docketNumber:"BL-2025-045-02", status:"Planned", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
-        products:[], services:[S("SVC-CLEAR",1)], notes:"Crew support truck", signature:null },
-    ], status:"In Progress" },
-
-  { _id:"BL-2025-046", blastNumber:"BL-2025-046", plantCode:"2025", date:"2026-06-04", startTime:"06:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Itauri-Jharkua Block", customerPO:"4500087216", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-046-01", status:"Planned", vehicleId:"MH-12-BMD-02",
-        operatorIds:["EMP-2025-03"], shotfirerIds:["EMP-2025-06"],
-        products:[P("BULK-ANFO",18)], services:[], notes:"", signature:null },
-    ], status:"Planned" },
-
-  { _id:"BL-2025-047", blastNumber:"BL-2025-047", plantCode:"2025", date:"2026-06-05", startTime:"11:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087220", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-047-01", status:"Planned", vehicleId:"MH-12-BMD-01",
-        operatorIds:["EMP-2025-01"], shotfirerIds:["EMP-2025-05"],
-        products:[P("BULK-EMUL",22), P("IS-EDET",400)], services:[], notes:"", signature:null },
-    ], status:"Planned" },
-
-  { _id:"BL-2025-048", blastNumber:"BL-2025-048", plantCode:"2025", date:"2026-06-05", startTime:"08:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6202", customerName:"Aggregate Resources Pvt Ltd", shipToSite:"Kadapa Block-3", customerPO:"4500087221", contractId:"C-ARP-23",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-048-01", status:"Planned", vehicleId:"MH-12-BMD-02",
-        operatorIds:["EMP-2025-04"], shotfirerIds:["EMP-2025-06"],
-        products:[P("BULK-EMUL",12)], services:[], notes:"", signature:null },
-    ], status:"Planned" },
-
-  /* Recurring instances (each independent), share a crew vehicle */
-  { _id:"BL-2025-049", blastNumber:"BL-2025-049", plantCode:"2025", date:"2026-06-04", startTime:"05:00",
-    bookingType:"recurring", endDate:null, recurrence:{frequency:"daily", endDate:"2026-06-06", workingDaysOnly:true, occurrences:3},
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087230", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-049-01", status:"In Progress", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
-        products:[], services:[S("SVC-CLEAR",1)], notes:"", signature:null },
-    ], status:"In Progress" },
-
-  { _id:"BL-2025-049b", blastNumber:"BL-2025-049b", plantCode:"2025", date:"2026-06-05", startTime:"05:00",
-    bookingType:"recurring", endDate:null, recurrence:{frequency:"daily", endDate:"2026-06-06", workingDaysOnly:true, occurrences:3},
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit A", customerPO:"4500087230", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-049b-01", status:"Planned", vehicleId:"MH-12-BCV-01",
-        operatorIds:[], shotfirerIds:["EMP-2025-05","EMP-2025-06"],
-        products:[], services:[S("SVC-CLEAR",1)], notes:"", signature:null },
-    ], status:"Planned" },
-
-  { _id:"BL-2025-052", blastNumber:"BL-2025-052", plantCode:"2025", date:"2026-06-04", startTime:"04:00",
-    bookingType:"single", endDate:null, recurrence:null,
-    customerId:"6201", customerName:"JK Cement Works — Central", shipToSite:"Panna Pit B", customerPO:"4500087235", contractId:"C-JKC-24",
-    deliveryDockets:[
-      { docketNumber:"BL-2025-052-01", status:"Planned", vehicleId:"MH-12-SVY-01",
-        operatorIds:["EMP-2025-07"], shotfirerIds:[],
-        products:[], services:[S("SVC-MARK",1)], notes:"", signature:null },
-    ], status:"Planned" },
-];
 
 let bookings = [];
 

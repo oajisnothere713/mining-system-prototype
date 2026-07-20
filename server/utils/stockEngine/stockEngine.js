@@ -2,7 +2,7 @@ const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
 const Stock = require('../../models/Stock/Stock');
 const Delivery = require('../../models/Delivery/Delivery');
-const CustomerDelivery = require('../../models/CustomerDelivery/CustomerDelivery');
+const Booking = require('../../models/Schedule/Booking');
 
 /**
  * Calculate the full stock grid for a given plant.
@@ -24,8 +24,8 @@ const calculateStockGrid = async (plantCode) => {
   // Get all deliveries for this plant
   const deliveries = await Delivery.find({ plant: plant._id }).populate('lines.material');
 
-  // Get all customer deliveries for this plant
-  const customerDeliveries = await CustomerDelivery.find({ plant: plant._id }).populate('material');
+  // Get all bookings for this plant
+  const bookings = await Booking.find({ plantCode });
 
   // Build a map of materials from stock records
   const materialMap = {};
@@ -43,11 +43,34 @@ const calculateStockGrid = async (plantCode) => {
     }
   }
 
-  // Group deliveries by material and state (for Today only as per front-end design)
-  const completeDeliveriesByMaterial = {};
-  const pendingDeliveriesByMaterial = {};
+  const formatD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayDate = new Date();
+  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
+  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
+
+  const TODAY_STR = formatD(todayDate);
+  const YEST_STR = formatD(yestDate);
+  const TOM_STR = formatD(tomDate);
+
+  // Group deliveries by material, state, and day label
+  const completeDeliveriesByMaterialDay = {};
+  const pendingDeliveriesByMaterialDay = {};
 
   for (const delivery of deliveries) {
+    const dStr = formatD(new Date(delivery.date));
+    let dayLabel = null;
+    if (dStr === TODAY_STR) dayLabel = "Today";
+    else if (dStr === YEST_STR) dayLabel = "Yesterday";
+    else if (dStr === TOM_STR) dayLabel = "Tomorrow";
+    
+    if (!dayLabel) continue;
+
     for (const line of delivery.lines) {
       if (!line.material) continue;
       const matName = line.material.name;
@@ -59,25 +82,39 @@ const calculateStockGrid = async (plantCode) => {
       };
 
       if (delivery.state === 'complete') {
-        if (!completeDeliveriesByMaterial[matName]) completeDeliveriesByMaterial[matName] = [];
-        completeDeliveriesByMaterial[matName].push(item);
+        if (!completeDeliveriesByMaterialDay[matName]) completeDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
+        completeDeliveriesByMaterialDay[matName][dayLabel].push(item);
       } else if (delivery.state === 'physical_pending') {
-        if (!pendingDeliveriesByMaterial[matName]) pendingDeliveriesByMaterial[matName] = [];
-        pendingDeliveriesByMaterial[matName].push(item);
+        if (!pendingDeliveriesByMaterialDay[matName]) pendingDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
+        pendingDeliveriesByMaterialDay[matName][dayLabel].push(item);
       }
     }
   }
 
-  // Group customer deliveries by material and day label
+  // Group bookings by material and day label
   const custDeliveriesByMaterialDay = {};
-  for (const cd of customerDeliveries) {
-    if (!cd.material) continue;
-    const matName = cd.material.name;
-    if (!custDeliveriesByMaterialDay[matName]) {
-      custDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
-    }
-    if (custDeliveriesByMaterialDay[matName][cd.dayLabel]) {
-      custDeliveriesByMaterialDay[matName][cd.dayLabel].push([cd.bookingRef, cd.quantity]);
+  
+
+
+  for (const b of bookings) {
+    if (b.status === "Cancelled") continue;
+
+    let dayLabel = null;
+    if (b.date === TODAY_STR) dayLabel = "Today";
+    else if (b.date === YEST_STR) dayLabel = "Yesterday";
+    else if (b.date === TOM_STR) dayLabel = "Tomorrow";
+    
+    if (!dayLabel) continue;
+
+    for (const docket of b.deliveryDockets) {
+      for (const prod of docket.products) {
+        if (!prod.name) continue;
+        const matName = prod.name;
+        if (!custDeliveriesByMaterialDay[matName]) {
+          custDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
+        }
+        custDeliveriesByMaterialDay[matName][dayLabel].push([b.blastNumber, prod.plannedQty]);
+      }
     }
   }
 
@@ -91,8 +128,8 @@ const calculateStockGrid = async (plantCode) => {
     let runningOpening = matData.opening;
 
     for (const day of days) {
-      const pgrCList = day === 'Today' ? (completeDeliveriesByMaterial[matName] || []) : [];
-      const pgrPList = day === 'Today' ? (pendingDeliveriesByMaterial[matName] || []) : [];
+      const pgrCList = (completeDeliveriesByMaterialDay[matName] && completeDeliveriesByMaterialDay[matName][day]) || [];
+      const pgrPList = (pendingDeliveriesByMaterialDay[matName] && pendingDeliveriesByMaterialDay[matName][day]) || [];
       const cdList = (custDeliveriesByMaterialDay[matName] && custDeliveriesByMaterialDay[matName][day]) || [];
 
       const pgrC = pgrCList.reduce((sum, item) => sum + item.qty, 0);
@@ -140,60 +177,84 @@ const getBreakdownDetails = async (plantCode, materialName, column, day) => {
 
   const breakdown = { items: [], total: 0 };
 
-  if (column === 'pgrComplete' || column === 'pgrC') {
-    if (day === 'Today') {
-      const deliveries = await Delivery.find({
-        plant: plant._id,
-        state: 'complete',
-        'lines.material': material._id,
-      }).populate('lines.material');
+  const formatD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
-      for (const del of deliveries) {
-        for (const line of del.lines) {
-          if (line.material._id.toString() === material._id.toString()) {
-            breakdown.items.push({
-              ibd: del.ibdNumber,
-              po: del.poNumber,
-              supplier: del.supplier,
-              qty: line.received,
-            });
-            breakdown.total += line.received;
-          }
+  const todayDate = new Date();
+  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
+  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
+
+  const TODAY_STR = formatD(todayDate);
+  const YEST_STR = formatD(yestDate);
+  const TOM_STR = formatD(tomDate);
+  
+  const targetDateStr = day === 'Today' ? TODAY_STR : (day === 'Yesterday' ? YEST_STR : TOM_STR);
+
+  if (column === 'pgrComplete' || column === 'pgrC') {
+    const deliveries = await Delivery.find({
+      plant: plant._id,
+      state: 'complete',
+      'lines.material': material._id,
+    }).populate('lines.material');
+
+    for (const del of deliveries) {
+      const dStr = formatD(new Date(del.date));
+      if (dStr !== targetDateStr) continue;
+
+      for (const line of del.lines) {
+        if (line.material._id.toString() === material._id.toString()) {
+          breakdown.items.push({
+            ibd: del.ibdNumber,
+            po: del.poNumber,
+            supplier: del.supplier,
+            qty: line.received,
+          });
+          breakdown.total += line.received;
         }
       }
     }
   } else if (column === 'pgrPending' || column === 'pgrP') {
-    if (day === 'Today') {
-      const deliveries = await Delivery.find({
-        plant: plant._id,
-        state: 'physical_pending',
-        'lines.material': material._id,
-      }).populate('lines.material');
+    const deliveries = await Delivery.find({
+      plant: plant._id,
+      state: 'physical_pending',
+      'lines.material': material._id,
+    }).populate('lines.material');
 
-      for (const del of deliveries) {
-        for (const line of del.lines) {
-          if (line.material._id.toString() === material._id.toString()) {
-            breakdown.items.push({
-              ibd: del.ibdNumber,
-              po: del.poNumber,
-              supplier: del.supplier,
-              qty: line.received,
-            });
-            breakdown.total += line.received;
-          }
+    for (const del of deliveries) {
+      const dStr = formatD(new Date(del.date));
+      if (dStr !== targetDateStr) continue;
+
+      for (const line of del.lines) {
+        if (line.material._id.toString() === material._id.toString()) {
+          breakdown.items.push({
+            ibd: del.ibdNumber,
+            po: del.poNumber,
+            supplier: del.supplier,
+            qty: line.received,
+          });
+          breakdown.total += line.received;
         }
       }
     }
   } else if (column === 'customerDelivery' || column === 'cd') {
-    const custDels = await CustomerDelivery.find({
-      plant: plant._id,
-      material: material._id,
-      dayLabel: day,
-    });
+    const bookings = await Booking.find({ plantCode });
 
-    for (const cd of custDels) {
-      breakdown.items.push([cd.bookingRef, cd.quantity]);
-      breakdown.total += cd.quantity;
+    for (const b of bookings) {
+      if (b.status === "Cancelled") continue;
+      if (b.date !== targetDateStr) continue;
+
+      for (const docket of b.deliveryDockets) {
+        for (const prod of docket.products) {
+          if (prod.materialId === material._id.toString()) {
+            breakdown.items.push([b.blastNumber, prod.plannedQty]);
+            breakdown.total += prod.plannedQty;
+          }
+        }
+      }
     }
   }
 

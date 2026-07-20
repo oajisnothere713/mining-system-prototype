@@ -381,10 +381,10 @@ const syncERP = async (req, res, next) => {
 
     // 1. Process physical_pending deliveries
     for (const delivery of pendingDeliveries) {
-      // Keep the same IBD number and PO, and restore all materials
-      // so the user can hit "PGR complete". Set received = expected.
+      // Sync the ERP Purchase Order down to reality.
+      // Set expected = received so the user can hit "PGR complete".
       for (const line of delivery.lines) {
-        line.received = line.expected;
+        line.expected = line.received;
       }
       
       delivery.state = 'in_transit';
