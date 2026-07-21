@@ -102,7 +102,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     return n;
   }, [f.bookingType, f.date, f.recEnd, f.recFreq, f.recWorkingOnly]);
 
-  const isReadOnly = (f.status || "").toLowerCase() === "submitted";
+  const isReadOnly = ["delivered", "signed", "submitted"].includes((f.status || "").toLowerCase());
 
   const recSummary = () => {
     if (!f.date || !f.recEnd) return "Set a start and end date to preview the schedule.";
