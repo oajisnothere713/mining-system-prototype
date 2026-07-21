@@ -31,6 +31,7 @@ function docToForm(doc) {
 
   return {
     _id: doc._id, blastNumber: doc.blastNumber, date: startDate, startTime: doc.startTime || "04:30",
+    status: doc.status || "Planned",
     bookingType: doc.bookingType || "single", endDate: doc.endDate || "",
     recFreq: doc.recurrence ? (doc.recurrence.frequency === "weekly" ? "Weekly" : "Daily") : "Daily",
     recEnd: doc.recurrence ? doc.recurrence.endDate : "",
@@ -166,7 +167,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     return items;
   };
 
-  const buildDoc = () => {
+  const buildDoc = (submit = false) => {
     const c = customer(); const now = new Date().toISOString();
     return {
       _id: f._id, blastNumber: f._id, plantCode: plantCode,
@@ -175,10 +176,10 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
       endDate: f.bookingType === "multi" ? f.endDate : null,
       recurrence: f.bookingType === "recurring" ? { frequency: f.recFreq.toLowerCase(), endDate: f.recEnd, workingDaysOnly: f.recWorkingOnly, occurrences: occ } : null,
       customerId: f.customerId, customerName: c ? c.name : "", shipToSite: f.shipToSite,
-      customerPO: f.customerPO, contractId: f.contract || null, status: "Planned",
+      customerPO: f.customerPO, contractId: f.contract || null, status: submit ? "In Progress" : (f.status || "Planned"),
       deliveryDockets: f.dockets.map((dk, i) => ({
         docketNumber: `${f._id}-${String(i + 1).padStart(2, "0")}`,
-        status: "Planned",
+        status: submit ? "In Progress" : (dk.status || "Planned"),
         vehicleId: dk.vehicleId,
         operatorIds: dk.operatorIds, shotfirerIds: dk.shotfirerIds,
         products: dk.products.filter(p => p.materialId && p.plannedQty).map(p => {
@@ -195,7 +196,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     };
   };
 
-  const save = () => {
+  const save = (submit = false) => {
     if (!validationOk()) { setSaveAttempted(true); return; }
     
     if (f.bookingType === "recurring") {
@@ -226,10 +227,10 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           date: cloneF.date, startTime: cloneF.startTime,
           bookingType: "recurring", endDate: null, recurrence: { frequency: f.recFreq.toLowerCase(), endDate: f.recEnd, workingDaysOnly: f.recWorkingOnly, occurrences: occ },
           customerId: cloneF.customerId, customerName: c ? c.name : "", shipToSite: cloneF.shipToSite,
-          customerPO: cloneF.customerPO, contractId: cloneF.contract || null, status: "Planned",
+          customerPO: cloneF.customerPO, contractId: cloneF.contract || null, status: submit ? "In Progress" : (f.status || "Planned"),
           deliveryDockets: cloneF.dockets.map((dk, i) => ({
             docketNumber: `${cloneF._id}-${String(i + 1).padStart(2, "0")}`,
-            status: "Planned", vehicleId: dk.vehicleId, operatorIds: dk.operatorIds, shotfirerIds: dk.shotfirerIds,
+            status: submit ? "In Progress" : (dk.status || "Planned"), vehicleId: dk.vehicleId, operatorIds: dk.operatorIds, shotfirerIds: dk.shotfirerIds,
             products: dk.products.filter(p => p.materialId && p.plannedQty).map(p => {
               const m = PRODUCT_MAP[p.materialId];
               return { materialId: p.materialId, name: m ? m.name : p.materialId, category: m ? m.cat : null, plannedQty: Number(p.plannedQty), uom: m ? m.uom : null, actualQty: null };
@@ -260,7 +261,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
       
       onSaved && onSaved();
     } else {
-      const doc = buildDoc();
+      const doc = buildDoc(submit);
       if (isEdit) replaceBooking(doc); else addBooking(doc);
       onSaved && onSaved(doc);
     }
@@ -329,7 +330,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
             </div>
             <button className="chip" style={{ padding: "9px 16px" }} onClick={onClose}>Cancel</button>
             <div className="saveWrap" style={{ position: "relative" }}>
-              <button onClick={save} style={{ padding: "10px 24px", border: "none", background: ok ? "#E8590C" : "#D0D4DA", color: ok ? "#fff" : "#9AA0A8", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: ok ? "pointer" : "not-allowed", letterSpacing: -.2, transition: "background .15s, transform .1s" }}>{isEdit ? "Save Changes" : "Save Booking"}</button>
+              <button onClick={() => save(false)} style={{ padding: "10px 24px", border: "none", background: ok ? "#E8590C" : "#D0D4DA", color: ok ? "#fff" : "#9AA0A8", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: ok ? "pointer" : "not-allowed", letterSpacing: -.2, transition: "background .15s, transform .1s" }}>{isEdit ? "Save Changes" : "Save Booking"}</button>
               {!ok && missing.length > 0 && (
                 <div className="missingTip" style={{ display: "none", position: "absolute", right: 0, top: "calc(100% + 10px)", background: "#1A1D21", color: "#E2E5EA", borderRadius: 12, padding: "14px 16px", fontSize: 12.5, lineHeight: 1.75, minWidth: 248, zIndex: 200, boxShadow: "0 10px 30px rgba(0,0,0,.3)", pointerEvents: "none", animation: "slideDown .15s ease" }}>
                   <div style={{ fontSize: 10.5, fontWeight: 700, color: "#F4A96A", textTransform: "uppercase", letterSpacing: .6, marginBottom: 10 }}>Still needed to save</div>
@@ -342,18 +343,23 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
               )}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            {[[schedDone, "Schedule", "ti-calendar-event"], [custDone, "Customer & Site", "ti-building"], [dksDone, "Delivery Dockets", "ti-clipboard-list"]].map((step, i) => {
-              const [done, label, icon] = step;
-              return (
-                <React.Fragment key={label}>
-                  {i > 0 && <i className="ti ti-chevron-right" style={{ color: "#B8BFC8", fontSize: 11 }}></i>}
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 8px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: done ? "#EBFBEE" : "#fff", color: done ? "#2F9E44" : "#5B6470", border: `1px solid ${done ? "#ABEDC2" : "#DDE1E7"}` }}>
-                    <i className={`ti ${done ? "ti-circle-check-filled" : icon}`} style={{ fontSize: 13 }}></i> {label}
-                  </span>
-                </React.Fragment>
-              );
-            })}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              {[[schedDone, "Schedule", "ti-calendar-event"], [custDone, "Customer & Site", "ti-building"], [dksDone, "Delivery Dockets", "ti-clipboard-list"]].map((step, i) => {
+                const [done, label, icon] = step;
+                return (
+                  <React.Fragment key={label}>
+                    {i > 0 && <i className="ti ti-chevron-right" style={{ color: "#B8BFC8", fontSize: 11 }}></i>}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px 4px 8px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: done ? "#EBFBEE" : "#fff", color: done ? "#2F9E44" : "#5B6470", border: `1px solid ${done ? "#ABEDC2" : "#DDE1E7"}` }}>
+                      <i className={`ti ${done ? "ti-circle-check-filled" : icon}`} style={{ fontSize: 13 }}></i> {label}
+                    </span>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            {(!f.status || f.status === "Planned") && (
+              <button onClick={() => { if (ok && f.dockets.every(dk => dk.status === "Signed")) save(true); }} style={{ padding: "8px 18px", border: "none", background: (ok && f.dockets.every(dk => dk.status === "Signed")) ? "#1A5C8F" : "#D0D4DA", color: (ok && f.dockets.every(dk => dk.status === "Signed")) ? "#fff" : "#9AA0A8", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: (ok && f.dockets.every(dk => dk.status === "Signed")) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "background .15s" }}><i className="ti ti-send"></i> Submit Delivery</button>
+            )}
           </div>
         </div>
       </div>
@@ -491,13 +497,16 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           const anyProducts = dk.products.some(p => p.materialId);
 
           return (
-            <div key={di} className="bf-card" style={{ marginBottom: 16, overflow: "hidden", borderLeft: `3px solid ${dkReady ? "#2F9E44" : "#E8590C"}` }}>
+            <div key={di} className="bf-card" style={{ marginBottom: 16, borderLeft: `3px solid ${dkReady ? "#2F9E44" : "#E8590C"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 22px", background: "linear-gradient(135deg,#FFF6F1 0%,#FFFAF8 100%)", borderBottom: "1px solid #F0E2D6" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ width: 30, height: 30, borderRadius: 8, background: "#E8590C", color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{di + 1}</span>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: -.2, display: "flex", alignItems: "center", gap: 7 }}>Docket {dkNumber}
-                      <span className="pill" style={{ background: "#E7F5FF", color: "#1971C2" }}>PLANNED</span>
+                      <span className="pill" onClick={() => setDocket(di, { status: dk.status === "Signed" ? "Planned" : "Signed" })} style={{ background: dk.status === "Signed" ? "#EBFBEE" : "#E7F5FF", color: dk.status === "Signed" ? "#2F9E44" : "#1971C2", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {dk.status === "Signed" && <i className="ti ti-signature"></i>}
+                        {dk.status ? dk.status.toUpperCase() : "PLANNED"}
+                      </span>
                       {dkReady && <span className="pill" style={{ background: "#EBFBEE", color: "#2F9E44" }}>✓ Ready</span>}
                     </div>
                     {(dk.vehicleId || dkProdCount > 0 || dkSvcCount > 0) && (

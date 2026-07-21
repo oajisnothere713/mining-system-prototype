@@ -29,6 +29,7 @@ function people(b) { return [].concat(b.operators || [], b.crew || []); }
 function shortProd(b) {
   const p = (b.products || []).map(x => `${x[0]} ${x[1]}${x[2] === "t" ? "t" : ""}`);
   if ((b.services || []).length && !p.length) return b.services[0][0];
+  if (p.length > 2) return p.slice(0, 2).join(" · ") + " ...";
   return p.join(" · ");
 }
 
@@ -519,7 +520,6 @@ export default function SchedulePage() {
           <div style={{ padding: '16px 22px', borderTop: `1px solid ${LN}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {b.status === "Planned" && (
               <>
-                <button onClick={() => { updateBooking(b.id, { status: "In Progress" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "In Progress"}); }} style={{ ...sb, background: O, width: '100%' }}><i className="ti ti-send"></i> Submit Delivery</button>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, flex: 1, padding: '11px 0' }}><i className="ti ti-pencil"></i> Edit Booking</button>
                   <button onClick={() => { updateBooking(b.id, { status: "Cancelled" }); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, flex: 1, color: '#9C6B00', borderColor: '#F08C00', padding: '11px 0' }}><i className="ti ti-ban"></i> Cancel Booking</button>
