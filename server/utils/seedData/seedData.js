@@ -29,7 +29,6 @@ const MATERIALS = {
   'Detonating Cord — 10g/m': { type: 'Initiating Systems', uom: 'm' },
   
   // From Forecast
-  'AN Prill': { type: 'Bulk', uom: 't' },
   'ANFO': { type: 'Bulk', uom: 't' },
   'Heavy ANFO 30:70': { type: 'Bulk', uom: 't' },
   'Heavy ANFO 40:60': { type: 'Bulk', uom: 't' },
@@ -43,9 +42,7 @@ const MATERIALS = {
   'Aluminised ANFO': { type: 'Bulk', uom: 't' },
   'Repumpable Emulsion': { type: 'Bulk', uom: 't' },
   'Electronic Detonator': { type: 'Initiating Systems', uom: 'ea' },
-  'Cast Booster 400g': { type: 'Initiating Systems', uom: 'ea' },
   'Cast Booster 150g': { type: 'Initiating Systems', uom: 'ea' },
-  'Detonating Cord 10 g/m': { type: 'Initiating Systems', uom: 'm' },
   'Detonating Cord 5 g/m': { type: 'Initiating Systems', uom: 'm' },
   'Shock Tube Detonator': { type: 'Initiating Systems', uom: 'ea' },
   'Surface Connector': { type: 'Initiating Systems', uom: 'ea' },
