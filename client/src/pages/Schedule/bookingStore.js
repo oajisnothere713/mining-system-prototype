@@ -200,8 +200,18 @@ function handleResponse(res) {
   if (!res.ok) throw new Error(`Server returned ${res.status}`);
 }
 
+const formatDbStatus = (s) => {
+  if (!s) return s;
+  const lower = s.toLowerCase();
+  return lower === "in progress" ? "inprogress" : lower;
+};
+
 export function addBooking(doc) {
   const previousState = [...bookings];
+  if (doc.status) doc.status = formatDbStatus(doc.status);
+  if (doc.deliveryDockets) {
+    doc.deliveryDockets.forEach(dk => { if (dk.status) dk.status = formatDbStatus(dk.status); });
+  }
   bookings = [...bookings, doc];
   fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) })
     .then(handleResponse)
@@ -210,14 +220,31 @@ export function addBooking(doc) {
 }
 export function updateBooking(id, changes) {
   const previousState = [...bookings];
+  if (changes.status) changes.status = formatDbStatus(changes.status);
   bookings = bookings.map(b => b._id === id ? { ...b, ...changes, updatedAt: new Date().toISOString() } : b);
   fetch(`${API_URL}/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(changes) })
     .then(handleResponse)
     .catch(err => handleApiError(err, previousState, "update"));
   return getBookingById(id);
 }
+export function updateDocketStatus(bookingId, docketNumber, newStatus) {
+  const previousState = [...bookings];
+  const b = bookings.find(x => x._id === bookingId);
+  if (!b) return null;
+  const clone = { ...b, deliveryDockets: b.deliveryDockets.map(dk => dk.docketNumber === docketNumber ? { ...dk, status: formatDbStatus(newStatus) } : dk) };
+  clone.status = formatDbStatus(rollUpStatus(clone.deliveryDockets));
+  bookings = bookings.map(x => x._id === bookingId ? clone : x);
+  fetch(`${API_URL}/${bookingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(clone) })
+    .then(handleResponse)
+    .catch(err => handleApiError(err, previousState, "update docket"));
+  return clone;
+}
 export function replaceBooking(doc) {
   const previousState = [...bookings];
+  if (doc.status) doc.status = formatDbStatus(doc.status);
+  if (doc.deliveryDockets) {
+    doc.deliveryDockets.forEach(dk => { if (dk.status) dk.status = formatDbStatus(dk.status); });
+  }
   const exists = bookings.some(b => b._id === doc._id);
   bookings = exists ? bookings.map(b => b._id === doc._id ? doc : b) : [...bookings, doc];
   
