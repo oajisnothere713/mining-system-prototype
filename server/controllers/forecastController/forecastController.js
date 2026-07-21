@@ -503,63 +503,19 @@ exports.seedForecastData = async (req, res, next) => {
     await ForecastPlan.deleteMany({ plant: plantId });
     await ForecastAccuracy.deleteMany({ plant: plantId });
 
-    const getMats = () => [
-      {n:'AN Prill', c:'BULK', u:'t', s:12,  w:[18,16,16,18], lead:5},
-      {n:'ANFO', c:'BULK', u:'t', s:380, w:[42,38,45,30], lead:7},
-      {n:'Bulk Emulsion', c:'BULK', u:'t', s:60, w:[18,22,20,15], lead:8},
-      {n:'Heavy ANFO 30:70', c:'BULK', u:'t', s:95, w:[8,0,9,0], lead:7},
-      {n:'Heavy ANFO 40:60', c:'BULK', u:'t', s:40, w:[6,5,4,6], lead:7},
-      {n:'Heavy ANFO 50:50', c:'BULK', u:'t', s:14, w:[5,4,5,4], lead:7},
-      {n:'Pumpable Emulsion', c:'BULK', u:'t', s:60, w:[0,0,12,0], lead:8},
-      {n:'Packaged Emulsion', c:'BULK', u:'t', s:8, w:[3,4,3,3], lead:9},
-      {n:'Watergel', c:'BULK', u:'t', s:30, w:[2,3,2,2], lead:9},
-      {n:'Doped ANFO', c:'BULK', u:'t', s:5, w:[3,3,2,3], lead:6},
-      {n:'Site-Sensitised Emulsion', c:'BULK', u:'t', s:120, w:[20,18,22,20], lead:8},
-      {n:'Low-Density ANFO', c:'BULK', u:'t', s:6, w:[4,3,4,3], lead:6},
-      {n:'Aluminised ANFO', c:'BULK', u:'t', s:50, w:[3,2,3,2], lead:7},
-      {n:'Repumpable Emulsion', c:'BULK', u:'t', s:18, w:[6,5,6,5], lead:8},
-      {n:'Electronic Detonator', c:'IS&PE', u:'ea', s:1800, w:[800,600,900,500], lead:10},
-      {n:'Cast Booster 400g', c:'IS&PE', u:'ea', s:950, w:[400,400,320,200], lead:9},
-      {n:'Cast Booster 150g', c:'IS&PE', u:'ea', s:2200, w:[300,250,300,250], lead:9},
-      {n:'Detonating Cord 10 g/m', c:'IS&PE', u:'m', s:2400, w:[200,150,0,100], lead:9},
-      {n:'Detonating Cord 5 g/m', c:'IS&PE', u:'m', s:600, w:[100,80,100,80], lead:9},
-      {n:'Shock Tube Detonator', c:'IS&PE', u:'ea', s:300, w:[150,120,150,120], lead:10},
-      {n:'Surface Connector', c:'IS&PE', u:'ea', s:80, w:[60,50,60,50], lead:8},
-      {n:'Plain Detonator', c:'IS&PE', u:'ea', s:200, w:[120,100,120,100], lead:8},
-      {n:'Safety Fuse', c:'IS&PE', u:'m', s:1500, w:[100,80,100,80], lead:7},
-      {n:'DTH Delay', c:'IS&PE', u:'ea', s:90, w:[70,60,70,60], lead:11},
-      {n:'Trunkline Delay', c:'IS&PE', u:'ea', s:40, w:[80,70,80,70], lead:12},
-      {n:'Primer Cartridge', c:'IS&PE', u:'ea', s:5000, w:[400,350,400,350], lead:9},
-    ];
-
-    const materials = getMats();
-    const materialDocs = [];
-
-    for (const m of materials) {
-      let matName = m.n;
-      if (matName === 'AN Prill') matName = 'Prill';
-      if (matName === 'Cast Booster 400g') matName = 'Booster ?" 400g';
-      if (matName === 'Detonating Cord 10 g/m') matName = 'Detonating Cord ?" 10g/m';
-      if (matName === 'Bulk Emulsion') matName = 'Bulk Emulsion';
+    const materials = await Material.find({});
+    const materialDocs = materials.map(m => {
+      // Generate some dummy seed data for weeklyDemand and leadTime for the prototype
+      const base = m.type === 'Bulk' ? (Math.floor(Math.random() * 40) + 10) : (Math.floor(Math.random() * 800) + 100);
+      const w = [base, Math.max(0, base - 5), base + 5, base];
       
-      let officialMaterial = await Material.findOne({ name: m.n }) || await Material.findOne({ name: matName });
-      
-      if (!officialMaterial) {
-        officialMaterial = await Material.create({
-          name: m.n,
-          type: m.c === 'BULK' ? 'Bulk' : 'Initiating Systems',
-          uom: m.u,
-          status: 'Active'
-        });
-      }
-      
-      materialDocs.push({
+      return {
         plant: plantId,
-        material: officialMaterial._id,
-        weeklyDemand: m.w,
-        leadTime: m.lead
-      });
-    }
+        material: m._id,
+        weeklyDemand: w,
+        leadTime: Math.floor(Math.random() * 5) + 5
+      };
+    });
     
     if (materialDocs.length > 0) {
       await ForecastMaterial.insertMany(materialDocs);

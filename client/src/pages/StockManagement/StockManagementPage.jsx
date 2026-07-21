@@ -4,6 +4,7 @@ import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
 import { getStock } from '../../services/stockService/stockService';
 import { getDeliveries } from '../../services/deliveryService/deliveryService';
+import { fetchBookings, getBookingsByPlant } from '../Schedule/bookingStore';
 import { buildStock } from '../../utils/stockCalculator/stockCalculator';
 import { DAYS, MATERIALS, HIGH_PCT, LOW_PCT } from '../../utils/constants/constants';
 import { fmt, unit } from '../../utils/formatters/formatters';
@@ -54,34 +55,29 @@ export default function StockManagementPage() {
     { label: "Tomorrow", date: TOM_STR },
   ];
 
-  // Try API first, fall back to client-side calculation
+  // Always compute stock from live delivery data
   useEffect(() => {
     let cancelled = false;
 
     async function loadStock() {
       setStockData(null);
       try {
-        // Try API
-        const dayLabel = TABS.find(t => t.date === selectedDate)?.label || 'Today';
-        const apiData = await getStock(selectedPlant.code, dayLabel);
-        if (!cancelled && apiData) {
-          setStockData(apiData);
-          return;
-        }
-      } catch {
-        // API failed, fall back to client-side
-      }
-
-      try {
-        const deliveries = await getDeliveries(selectedPlant.code);
+        // Fetch deliveries, bookings, and the master materials list for accurate stock calculation
+        await fetchBookings();
+        const [deliveries, matRes] = await Promise.all([
+          getDeliveries(selectedPlant.code),
+          fetch('/api/materials').then(r => r.json()),
+        ]);
+        const bookings = getBookingsByPlant(selectedPlant.code);
+        const masterMaterials = matRes.success ? matRes.data : null;
         if (!cancelled) {
-          const computed = buildStock(deliveries, selectedPlant.code, selectedDate);
+          const computed = buildStock(deliveries, selectedPlant.code, selectedDate, bookings, masterMaterials);
           setStockData(computed[selectedDate] || []);
         }
       } catch {
         if (!cancelled) {
           // Last resort: build with empty deliveries
-          const computed = buildStock([], selectedPlant.code, selectedDate);
+          const computed = buildStock([], selectedPlant.code, selectedDate, [], null);
           setStockData(computed[selectedDate] || []);
         }
       }
