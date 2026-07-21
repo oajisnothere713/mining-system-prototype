@@ -529,6 +529,7 @@ export default function SchedulePage() {
                     <tr key={i} style={{ borderTop: `1px solid ${BG}` }}>
                       <td style={{ fontSize: 12.5, color: SL, padding: '7px 0' }}>{r[0]}</td>
                       <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: INK, padding: '7px 0' }}>{r[1]} {r[2]}</td>
+                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[1]} {r[2]}</td>}
                     </tr>
                   ))}
                 </tbody>
