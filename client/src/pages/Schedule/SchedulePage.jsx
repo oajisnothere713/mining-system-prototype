@@ -5,7 +5,7 @@ import FleetPlanner from './FleetPlanner';
 import BookingForm from './BookingForm';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
-import { fetchBookings, fetchMaterials, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
+import { fetchBookings, fetchMaterials, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, updateDocketStatus, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -14,11 +14,12 @@ const STATUS = {
   Planned: { fg: BL, bg: BLS, dot: BL },
   "In Progress": { fg: "#9C6B00", bg: AMS, dot: AM },
   Delivered: { fg: GR, bg: GRS, dot: GR },
-  Submitted: { fg: SL, bg: SLS, dot: SL },
+  Signed: { fg: "#2B8A3E", bg: "#EBFBEE", dot: "#2B8A3E" },
+  Submitted: { fg: GR, bg: GRS, dot: GR },
   Cancelled: { fg: RD, bg: RDS, dot: RD }
 };
 
-const ORDER = ["Planned", "In Progress", "Delivered", "Submitted"];
+const ORDER = ["Planned", "In Progress", "Delivered", "Signed", "Submitted"];
 
 
 
@@ -178,6 +179,12 @@ export default function SchedulePage() {
     const raw = getBookings().filter(b => b.plantCode === plantCode);
     const flattened = [];
 
+    const norm = (s) => {
+      if (!s) return "Planned";
+      const m = { "planned": "Planned", "inprogress": "In Progress", "in progress": "In Progress", "delivered": "Delivered", "signed": "Signed", "submitted": "Submitted", "cancelled": "Cancelled", "ready to bill": "Ready to Bill", "partially delivered": "Partially Delivered" };
+      return m[s.toLowerCase()] || s;
+    };
+
     const generateDates = (b) => {
       return [b.date];
     };
@@ -189,6 +196,7 @@ export default function SchedulePage() {
         const cParts = (b.customerName || b.customerId || "").split(" ");
         const baseItem = {
           id: b.blastNumber, // Shared ID for the linked series
+          docketNumber: dk.docketNumber,
           time: b.startTime,
           vehicle: dk.vehicleId,
           customer: cParts.length > 1 ? cParts[0] + " " + cParts[1] : cParts[0],
@@ -206,8 +214,8 @@ export default function SchedulePage() {
              return [m ? m.name : s.serviceId, s.qty, m ? m.uom : ""];
           }),
           notes: dk.notes || "",
-          status: b.status || "Planned",
-          dkStatus: dk.status || "Planned",
+          status: norm(b.status),
+          dkStatus: norm(dk.status),
           multiDay: b.bookingType === "multi" ? { from: b.date, to: b.endDate } : null,
           recurrence: b.bookingType === "recurring" ? (b.recurrence?.frequency || b.recFreq) : null
         };
@@ -223,7 +231,7 @@ export default function SchedulePage() {
   React.useEffect(() => {
     setActivePanel(prev => {
       if (!prev) return prev;
-      const updated = B.find(b => b.id === prev.id);
+      const updated = B.find(b => b.id === prev.id && b.docketNumber === prev.docketNumber);
       if (updated && JSON.stringify(updated) !== JSON.stringify(prev)) {
         return updated;
       }
@@ -290,10 +298,10 @@ export default function SchedulePage() {
 
   // ─── CARD COMPONENT ─────────────────────────────
   const Card = ({ b, spanning }) => {
-    const s = STATUS[b.status];
+    const s = STATUS[b.dkStatus] || STATUS["Planned"];
     const pp = people(b);
     let hasClash = false;
-    if (["Planned", "In Progress"].includes(b.status)) {
+    if (["Planned", "In Progress"].includes(b.dkStatus)) {
        const d = new Date(b.date);
        const e = b.multiDay ? new Date(b.multiDay.to) : new Date(b.date);
        for (let curr = new Date(d); curr <= e; curr.setDate(curr.getDate() + 1)) {
@@ -305,7 +313,18 @@ export default function SchedulePage() {
     return (
       <div 
         className="bk-card"
-        onClick={() => setActivePanel(b)}
+        onClick={() => {
+          if (b.dkStatus === "Planned") {
+             const updated = updateDocketStatus(b.id, b.docketNumber, "In Progress");
+             if (updated) {
+               const newB = { ...b, dkStatus: "In Progress", status: updated.status };
+               setActivePanel(newB);
+               setRefreshKey(k => k + 1);
+               return;
+             }
+          }
+          setActivePanel(b);
+        }}
         style={{
           background: spanning ? `linear-gradient(90deg, #fff, #FFF8F3)` : WT,
           border: `1px solid ${spanning ? O : LN}`,
@@ -393,8 +412,8 @@ export default function SchedulePage() {
   // ─── PANEL COMPONENT ──────────────────────────
   const Panel = ({ b, onClose }) => {
     if (!b) return null;
-    const s = STATUS[b.status] || STATUS["Planned"];
-    const ci = ORDER.indexOf(b.status);
+    const s = STATUS[b.dkStatus] || STATUS["Planned"];
+    const ci = ORDER.indexOf(b.dkStatus);
     const pl = [
       ...(b.operators || []).map(p => ({ n: CREW_MAP[p] ? CREW_MAP[p].name : p, r: "BMD Operator" })), 
       ...(b.crew || []).map(p => ({ n: CREW_MAP[p] ? CREW_MAP[p].name : p, r: "Blaster / Shotfirer" }))
@@ -448,7 +467,7 @@ export default function SchedulePage() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11.5, color: SL, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Delivery</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${BG}`, fontSize: 13 }}>
-                <span style={{ color: SL }}>Status</span><span style={{ color: INK, fontWeight: 600, textAlign: 'right' }}><span style={{ fontSize: 12, fontWeight: 700, color: s.fg, background: s.bg, padding: '3px 10px', borderRadius: 100 }}>{b.status}</span></span>
+                <span style={{ color: SL }}>Status</span><span style={{ color: INK, fontWeight: 600, textAlign: 'right' }}><span style={{ fontSize: 12, fontWeight: 700, color: s.fg, background: s.bg, padding: '3px 10px', borderRadius: 100 }}>{b.dkStatus}</span></span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${BG}`, fontSize: 13 }}>
                 <span style={{ color: SL }}>{b.multiDay ? "Dates" : "Date & Time"}</span><span style={{ color: INK, fontWeight: 600, textAlign: 'right' }}>{b.multiDay ? `${b.multiDay.from.slice(8)}–${b.multiDay.to.slice(8)} Jun · ${b.time}` : `${b.date.slice(8)} Jun 2026 · ${b.time}`}</span>
@@ -495,7 +514,7 @@ export default function SchedulePage() {
                   <tr>
                     <th style={{ textAlign: 'left', fontSize: 10.5, color: SL, fontWeight: 700, textTransform: 'uppercase', padding: '0 0 6px' }}>Item</th>
                     <th style={{ textAlign: 'right', fontSize: 10.5, color: SL, fontWeight: 700, textTransform: 'uppercase', padding: '0 0 6px' }}>Planned</th>
-                    {["Delivered", "Submitted"].includes(b.status) && <th style={{ textAlign: 'right', fontSize: 10.5, color: SL, fontWeight: 700, textTransform: 'uppercase', padding: '0 0 6px' }}>Actual</th>}
+                    {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <th style={{ textAlign: 'right', fontSize: 10.5, color: SL, fontWeight: 700, textTransform: 'uppercase', padding: '0 0 6px' }}>Actual</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -503,7 +522,7 @@ export default function SchedulePage() {
                     <tr key={i} style={{ borderTop: `1px solid ${BG}` }}>
                       <td style={{ fontSize: 12.5, color: SL, padding: '7px 0' }}>{r[0]}</td>
                       <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: INK, padding: '7px 0' }}>{r[1]} {r[2]}</td>
-                      {["Delivered", "Submitted"].includes(b.status) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[1]} {r[2]}</td>}
+                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[1]} {r[2]}</td>}
                     </tr>
                   ))}
                   {(b.services || []).map((r, i) => (
@@ -518,7 +537,7 @@ export default function SchedulePage() {
           </div>
           
           <div style={{ padding: '16px 22px', borderTop: `1px solid ${LN}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {b.status === "Planned" && (
+            {["Planned", "In Progress"].includes(b.status) && (
               <>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, flex: 1, padding: '11px 0' }}><i className="ti ti-pencil"></i> Edit Booking</button>
@@ -527,22 +546,16 @@ export default function SchedulePage() {
                 <button onClick={() => { deleteBooking(b.id); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#E03131', borderColor: '#E03131' }}><i className="ti ti-trash"></i> Delete Booking</button>
               </>
             )}
-            {b.status === "In Progress" && (
-              <>
-                <button onClick={() => { updateBooking(b.id, { status: "Delivered" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Delivered"}); }} style={{ ...sb, background: AM, width: '100%' }}><i className="ti ti-check"></i> Mark as Delivered</button>
-                <button onClick={() => { updateBooking(b.id, { status: "Cancelled" }); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#9C6B00', borderColor: '#F08C00' }}><i className="ti ti-ban"></i> Cancel Booking</button>
-              </>
-            )}
             {b.status === "Delivered" && (
               <>
                 <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-                  <button style={{...gb, flex: 1}}><i className="ti ti-file-text"></i> View Docket</button>
+                  <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{...gb, flex: 1}}><i className="ti ti-file-text"></i> View Docket</button>
                   <button onClick={() => { updateBooking(b.id, { status: "Submitted" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Submitted"}); }} style={{ ...sb, background: GR, flex: 1 }}><i className="ti ti-send"></i> Submit to ERP</button>
                 </div>
               </>
             )}
             {b.status === "Submitted" && (
-              <button style={{ ...gb, width: '100%' }}><i className="ti ti-file-text"></i> View Docket (read-only)</button>
+              <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, width: '100%' }}><i className="ti ti-file-text"></i> View Docket (read-only)</button>
             )}
             {b.status === "Cancelled" && (
               <>

@@ -2,7 +2,7 @@
 @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 .bf-wrap * { box-sizing: border-box; }
-.bf-wrap { font-family: 'DM Sans', -apple-system, system-ui, sans-serif; background: #ECEFF3; color: #1A1D21; -webkit-font-smoothing: antialiased; margin: -28px -28px 0 -28px; padding-bottom: 48px; min-height: 100vh; }
+.bf-wrap { font-family: 'DM Sans', -apple-system, system-ui, sans-serif; background: #ECEFF3; color: #1A1D21; -webkit-font-smoothing: antialiased; margin: -28px; padding-bottom: 48px; min-height: 100vh; }
 .bf-wrap button, .bf-wrap select, .bf-wrap input, .bf-wrap textarea { font-family: inherit; }
 
 .fld {
