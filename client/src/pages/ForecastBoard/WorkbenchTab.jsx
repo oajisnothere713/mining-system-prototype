@@ -147,7 +147,7 @@ export default function WorkbenchTab({
 
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {listRows.map(r => (
-            <div key={r.n} onClick={() => setSelName(r.n)} className={`fc-list-row ${selName === r.n ? 'fc-list-row-active' : ''}`}>
+            <div key={r._id} onClick={() => setSelName(r.n)} className={`fc-list-row ${selName === r.n ? 'fc-list-row-active' : ''}`}>
               <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '3px', background: r.sv.dot, flexShrink: 0 }}></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.n}</div>

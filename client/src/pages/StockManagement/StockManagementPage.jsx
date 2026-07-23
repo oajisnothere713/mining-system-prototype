@@ -6,7 +6,7 @@ import { getStock } from '../../services/stockService/stockService';
 import { getDeliveries } from '../../services/deliveryService/deliveryService';
 import { fetchBookings, getBookingsByPlant } from '../Schedule/bookingStore';
 import { buildStock } from '../../utils/stockCalculator/stockCalculator';
-import { DAYS, MATERIALS, HIGH_PCT, LOW_PCT } from '../../utils/constants/constants';
+import { DAYS, HIGH_PCT, LOW_PCT } from '../../utils/constants/constants';
 import { fmt, unit } from '../../utils/formatters/formatters';
 import TypeTag from '../../components/ui/TypeTag/TypeTag';
 import BreakdownTable from '../../components/tables/BreakdownTable/BreakdownTable';
@@ -74,11 +74,10 @@ export default function StockManagementPage() {
           const computed = buildStock(deliveries, selectedPlant.code, selectedDate, bookings, masterMaterials);
           setStockData(computed[selectedDate] || []);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
-          // Last resort: build with empty deliveries
-          const computed = buildStock([], selectedPlant.code, selectedDate, [], null);
-          setStockData(computed[selectedDate] || []);
+          toast('Failed to fetch data from the database. Please check your connection.', 'error');
+          setStockData([]);
         }
       }
     }

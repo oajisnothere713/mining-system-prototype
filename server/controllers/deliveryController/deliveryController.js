@@ -29,6 +29,8 @@ const formatDelivery = (d) => {
     lines: d.lines.map(line => ({
       _id: line._id,
       material: line.material ? (typeof line.material === 'object' && line.material.name ? line.material.name : line.material.toString()) : '',
+      type: line.material ? (typeof line.material === 'object' ? line.material.type : 'Bulk') : 'Bulk',
+      uom: line.material ? (typeof line.material === 'object' ? line.material.uom : 't') : 't',
       expected: line.expected,
       received: line.received
     }))

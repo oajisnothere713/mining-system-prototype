@@ -1,4 +1,4 @@
-import { MATERIALS, DAYS, STOCK_BASE } from '../constants/constants';
+import { DAYS, STOCK_BASE } from '../constants/constants';
 
 /**
  * Build an object mapping material names to arrays of inbound line items
@@ -63,10 +63,7 @@ export function buildStock(deliveries, plant, targetDateStr = "2026-06-22", book
       matsMeta[m.name] = { type: m.type || 'Unknown', uom: m.uom || '-' };
     });
   } else {
-    matsSet = new Set(Object.keys(MATERIALS));
-    Object.entries(MATERIALS).forEach(([name, info]) => {
-      matsMeta[name] = { type: info.type || 'Unknown', uom: info.uom || '-' };
-    });
+    matsSet = new Set();
   }
   
   // Also include materials from deliveries/bookings that might not be in the master list

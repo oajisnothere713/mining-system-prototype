@@ -13,7 +13,7 @@ import {
 import { useToast } from '../../context/ToastContext/ToastContext';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import { getDeliveryById, confirmPGR, receivePhysical } from '../../services/deliveryService/deliveryService';
-import { MATERIALS } from '../../utils/constants/constants';
+
 import { fmt, unit } from '../../utils/formatters/formatters';
 import Pill from '../../components/ui/Pill/Pill';
 import TypeTag from '../../components/ui/TypeTag/TypeTag';
@@ -186,7 +186,7 @@ export default function DeliveryDetailPage() {
           </thead>
           <tbody>
             {lines.map((l, i) => {
-              const m = MATERIALS[l.material] || { type: 'Bulk', uom: 't' };
+              const m = { type: l.type || 'Bulk', uom: l.uom || 't' };
               const match = lineMatch(l);
               const variance = +(+l.received - +l.expected).toFixed(2);
               return (
