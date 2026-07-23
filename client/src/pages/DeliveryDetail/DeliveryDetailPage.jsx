@@ -102,8 +102,8 @@ export default function DeliveryDetailPage() {
     }
     setSaving(true);
     try {
-      await confirmPGR(delivery.id, lines, receiptDate);
-      toast(`Goods Receipt posted for ${delivery.id} · stock updated to PGR Complete`);
+      const updatedDelivery = await confirmPGR(delivery.id, lines, receiptDate);
+      toast(`PGR successfully completed - Material document number - ${updatedDelivery.materialDocumentNumber}`);
       navigate('/deliveries');
     } catch {
       toast('Failed to confirm PGR');

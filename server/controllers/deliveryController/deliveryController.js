@@ -26,6 +26,7 @@ const formatDelivery = (d) => {
     supplier: d.supplier,
     state: d.state,
     hidden: d.hidden,
+    materialDocumentNumber: d.materialDocumentNumber || null,
     lines: d.lines.map(line => ({
       _id: line._id,
       material: line.material ? (typeof line.material === 'object' && line.material.name ? line.material.name : line.material.toString()) : '',
@@ -291,6 +292,19 @@ const confirmPGR = async (req, res, next) => {
           deliveryLine.received = bodyLine.received;
         }
       }
+    }
+
+    if (!delivery.materialDocumentNumber) {
+      let uniqueNumber = null;
+      let isUnique = false;
+      while (!isUnique) {
+        uniqueNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+        const existing = await Delivery.findOne({ materialDocumentNumber: uniqueNumber });
+        if (!existing) {
+          isUnique = true;
+        }
+      }
+      delivery.materialDocumentNumber = uniqueNumber;
     }
 
     await delivery.save();
