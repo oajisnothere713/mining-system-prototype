@@ -60,6 +60,11 @@ const deliverySchema = new Schema(
       },
       default: 'awaiting',
     },
+    materialDocumentNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     hidden: {
       type: Boolean,
       default: false,
