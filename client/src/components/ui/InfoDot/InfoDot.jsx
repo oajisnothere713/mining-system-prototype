@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Info } from 'lucide-react';
 import './InfoDot.css';
 
 export default function InfoDot({ text }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <span className="info-dot">
+    <span className="info-dot" title={text}>
       <Info
         size={13}
         className="info-dot-icon"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
       />
-      {open && <span className="info-dot-tooltip">{text}</span>}
     </span>
   );
 }
