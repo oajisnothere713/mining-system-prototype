@@ -11,7 +11,7 @@
 
 .info-dot-tooltip {
   position: absolute;
-  bottom: 140%;
+  top: 140%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink);
