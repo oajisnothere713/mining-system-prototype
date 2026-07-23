@@ -151,10 +151,14 @@ export default function FOIAssistant({ isOpen, onClose, onAction }) {
       }
       // 3. "What is the current ANE stock?"
       else if (q === "What is the current ANE stock?") {
-        const deliveries = await getDeliveries(selectedPlant.code);
+        const [deliveries, matRes] = await Promise.all([
+          getDeliveries(selectedPlant.code),
+          fetch('/api/materials').then(r => r.json()),
+        ]);
+        const masterMaterials = matRes.success ? matRes.data : null;
         const d = new Date();
         const targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
-        const computed = buildStock(deliveries, selectedPlant.code, targetDate);
+        const computed = buildStock(deliveries, selectedPlant.code, targetDate, [], masterMaterials);
         const todayLedger = computed[targetDate] || [];
         const ane = todayLedger.find(m => m.material.includes("Ammonium Nitrate Emulsion"));
         if (!ane) {
@@ -166,10 +170,14 @@ export default function FOIAssistant({ isOpen, onClose, onAction }) {
       }
       // 4. "Which materials are running low?"
       else if (q === "Which materials are running low?") {
-        const deliveries = await getDeliveries(selectedPlant.code);
+        const [deliveries, matRes] = await Promise.all([
+          getDeliveries(selectedPlant.code),
+          fetch('/api/materials').then(r => r.json()),
+        ]);
+        const masterMaterials = matRes.success ? matRes.data : null;
         const d = new Date();
         const targetDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
-        const computed = buildStock(deliveries, selectedPlant.code, targetDate);
+        const computed = buildStock(deliveries, selectedPlant.code, targetDate, [], masterMaterials);
         const todayLedger = computed[targetDate] || [];
         const low = todayLedger.filter(m => m.capacity > 0 && m.closing <= (m.capacity * LOW_PCT));
         if (low.length === 0) {

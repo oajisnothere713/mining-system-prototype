@@ -89,7 +89,7 @@ exports.getMaterials = async (req, res, next) => {
         _id: fm._id,
         plant: fm.plant,
         name: fm.material?.name || 'Unknown Material',
-        category: fm.material?.type === 'Bulk' ? 'BULK' : 'IS&PE',
+        category: fm.material?.type?.includes('Bulk') ? 'BULK' : 'IS&PE',
         uom: fm.material?.uom || 'ea',
         stock: stockRecord ? stockRecord.closing : 0,
         weeklyDemand: calculatedDemand,

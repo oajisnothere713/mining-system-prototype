@@ -19,15 +19,7 @@ export const PLANTS = [
   { code: "2040", name: "Muddapur", region: "Karnataka" },
 ];
 
-export const MATERIALS = {
-  "Ammonium Nitrate Emulsion (ANE)": { type: "Bulk", uom: "t" },
-  "Ammonium Nitrate (AN)": { type: "Bulk", uom: "t" },
-  "Bulk Emulsion": { type: "Bulk", uom: "t" },
-  "Prill": { type: "Bulk", uom: "t" },
-  "Detonator — 1.5m, 0.02s": { type: "Initiating Systems", uom: "ea" },
-  "Booster — 400g": { type: "Initiating Systems", uom: "ea" },
-  "Detonating Cord — 10g/m": { type: "Initiating Systems", uom: "m" },
-};
+
 
 export const LOW_PCT = 0.15;
 export const HIGH_PCT = 0.92;
