@@ -39,4 +39,5 @@ mining-system-prototype/
 ---
 # To Run the application locally run the following command 
 ```bash
+bun build 
 bun run dev
