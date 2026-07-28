@@ -422,7 +422,7 @@ exports.getAccuracy = async (req, res, next) => {
     const monday = new Date(today);
     monday.setDate(today.getDate() + diff);
 
-    const forecastMaterials = await ForecastMaterial.find({ plant }).populate('material');
+    const materials = await Material.find({});
     
     // Past 4 weeks
     const pastWeekDates = Array.from({ length: 4 }).map((_, i) => {
@@ -435,7 +435,7 @@ exports.getAccuracy = async (req, res, next) => {
       return { start, end };
     });
 
-    const accuracyData = forecastMaterials.map(fm => {
+    const accuracyData = materials.map(mat => {
       const scores = [null, null, null, null];
 
       pastWeekDates.forEach((week, index) => {
@@ -448,19 +448,20 @@ exports.getAccuracy = async (req, res, next) => {
           
           if (bDate >= week.start && bDate <= week.end) {
             const hasMaterial = (b.deliveryDockets || []).some(dk => 
-              (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
+              (dk.products || []).some(p => p.name === mat.name || p.materialId === mat._id.toString())
             );
 
             if (hasMaterial) {
               plannedCount++;
               
-              // We consider it executed if the booking is Delivered OR the specific dockets for this material are Delivered
+              // We consider it executed if the booking is Delivered/Signed/Submitted OR the specific dockets for this material are Delivered/Signed/Submitted
+              const validStatuses = ['delivered', 'signed', 'submitted'];
               const materialDockets = (b.deliveryDockets || []).filter(dk => 
-                (dk.products || []).some(p => p.name === fm.material?.name || p.materialId === fm.material?._id?.toString())
+                (dk.products || []).some(p => p.name === mat.name || p.materialId === mat._id.toString())
               );
               
-              const allDelivered = materialDockets.length > 0 && materialDockets.every(dk => dk.status === 'Delivered');
-              if (allDelivered || b.status === 'Delivered') {
+              const allDelivered = materialDockets.length > 0 && materialDockets.every(dk => validStatuses.includes(dk.status));
+              if (allDelivered || validStatuses.includes(b.status)) {
                 deliveredCount++;
               }
             }
@@ -473,7 +474,7 @@ exports.getAccuracy = async (req, res, next) => {
       });
 
       return {
-        materialName: fm.material?.name || 'Unknown',
+        materialName: mat.name,
         accuracy: scores
       };
     });
