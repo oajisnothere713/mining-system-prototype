@@ -82,7 +82,7 @@ exports.getMaterials = async (req, res, next) => {
           name: c.name,
           site: c.site,
           dockets: c.dockets,
-          qty: Math.round(c.qty).toLocaleString('en-US')
+          qty: Number(c.qty.toFixed(3)).toLocaleString('en-US', { maximumFractionDigits: 1 })
         }));
       
       return {
