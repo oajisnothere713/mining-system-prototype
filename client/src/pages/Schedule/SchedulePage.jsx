@@ -207,11 +207,11 @@ export default function SchedulePage() {
           crew: dk.shotfirerIds || [],
           products: (dk.products || []).filter(p=>p.materialId).map(p => {
              const m = PRODUCT_MAP[p.materialId];
-             return [m ? m.name : p.materialId, p.plannedQty || p.qty, m ? m.uom : ""];
+             return [m ? m.name : p.materialId, p.plannedQty || p.qty, m ? m.uom : "", p.actualQty];
           }),
           services: (dk.services || []).filter(s=>s.serviceId).map(s => {
              const m = SERVICE_MAP[s.serviceId];
-             return [m ? m.name : s.serviceId, s.qty, m ? m.uom : ""];
+             return [m ? m.name : s.serviceId, s.qty, m ? m.uom : "", s.actualQty];
           }),
           notes: dk.notes || "",
           status: norm(b.status),
@@ -314,15 +314,6 @@ export default function SchedulePage() {
       <div 
         className="bk-card"
         onClick={() => {
-          if (b.dkStatus === "Planned") {
-             const updated = updateDocketStatus(b.id, b.docketNumber, "In Progress");
-             if (updated) {
-               const newB = { ...b, dkStatus: "In Progress", status: updated.status };
-               setActivePanel(newB);
-               setRefreshKey(k => k + 1);
-               return;
-             }
-          }
           setActivePanel(b);
         }}
         style={{
@@ -522,14 +513,14 @@ export default function SchedulePage() {
                     <tr key={i} style={{ borderTop: `1px solid ${BG}` }}>
                       <td style={{ fontSize: 12.5, color: SL, padding: '7px 0' }}>{r[0]}</td>
                       <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: INK, padding: '7px 0' }}>{r[1]} {r[2]}</td>
-                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[1]} {r[2]}</td>}
+                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[3] !== undefined && r[3] !== null ? r[3] : r[1]} {r[2]}</td>}
                     </tr>
                   ))}
                   {(b.services || []).map((r, i) => (
                     <tr key={i} style={{ borderTop: `1px solid ${BG}` }}>
                       <td style={{ fontSize: 12.5, color: SL, padding: '7px 0' }}>{r[0]}</td>
                       <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: INK, padding: '7px 0' }}>{r[1]} {r[2]}</td>
-                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[1]} {r[2]}</td>}
+                      {["Delivered", "Signed", "Submitted"].includes(b.dkStatus) && <td style={{ fontSize: 12.5, textAlign: 'right', fontWeight: 600, color: GR, padding: '7px 0' }}>{r[3] !== undefined && r[3] !== null ? r[3] : r[1]} {r[2]}</td>}
                     </tr>
                   ))}
                 </tbody>
