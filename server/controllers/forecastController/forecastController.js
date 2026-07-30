@@ -6,6 +6,7 @@ const Stock = require('../../models/Stock/Stock');
 const Booking = require('../../models/Schedule/Booking');
 const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
+const { calculateStockGrid } = require('../../utils/stockEngine/stockEngine');
 
 // GET /api/forecast/materials
 exports.getMaterials = async (req, res, next) => {
@@ -32,10 +33,13 @@ exports.getMaterials = async (req, res, next) => {
     const fourWeeksLater = new Date(monday);
     fourWeeksLater.setDate(monday.getDate() + 28);
     
+    // Calculate live stock from Deliveries + Bookings using the stock engine
+    const stockGrid = await calculateStockGrid(plantCode);
+    
     // Map each forecast material to its real-time stock
     const materials = await Promise.all(forecastMaterials.map(async (fm) => {
-      // Find the most recent stock record for this plant and material
-      const stockRecord = fm.material ? await Stock.findOne({ plant, material: fm.material._id }).sort({ date: -1 }) : null;
+      // Look up today's closing balance from the live stock grid
+      const liveStock = fm.material ? stockGrid[fm.material.name]?.Today?.closing : null;
       
       // Calculate top customers and weekly demand from bookings
       const customerStats = {};
@@ -54,7 +58,8 @@ exports.getMaterials = async (req, res, next) => {
         (b.deliveryDockets || []).forEach(dk => {
           (dk.products || []).forEach(p => {
             if (p.name === fm.material?.name || p.materialId === fm.material?._id?.toString()) {
-              matQty += p.plannedQty || 0;
+              const qty = (p.actualQty !== null && p.actualQty !== undefined) ? Number(p.actualQty) : Number(p.plannedQty || 0);
+              matQty += qty;
             }
           });
         });
@@ -91,7 +96,7 @@ exports.getMaterials = async (req, res, next) => {
         name: fm.material?.name || 'Unknown Material',
         category: fm.material?.type?.includes('Bulk') ? 'BULK' : 'IS&PE',
         uom: fm.material?.uom || 'ea',
-        stock: stockRecord ? stockRecord.closing : 0,
+        stock: liveStock !== null && liveStock !== undefined ? liveStock : 0,
         weeklyDemand: calculatedDemand,
         leadTime: fm.leadTime,
         customers: topCustomers,

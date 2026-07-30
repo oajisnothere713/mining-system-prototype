@@ -41,7 +41,8 @@ function customerDeliveryForDate(bookings, plant, dateStr) {
       (b.deliveryDockets || []).forEach((dk) => {
         (dk.products || []).forEach((p) => {
           if (p.name && p.plannedQty) {
-            (out[p.name] = out[p.name] || []).push([b._id || b.blastNumber, Number(p.plannedQty)]);
+            const qty = (p.actualQty !== null && p.actualQty !== undefined) ? Number(p.actualQty) : Number(p.plannedQty);
+            (out[p.name] = out[p.name] || []).push([b._id || b.blastNumber, qty]);
           }
         });
       });
