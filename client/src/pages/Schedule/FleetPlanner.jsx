@@ -64,10 +64,14 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek,ref
   const cellState=(v,dk)=>{
     const assignedBlast = vehicleAssignments(v, dk)[0];
     if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
+    
     if(ovr[plant]?.[v]?.[dk]) {
       const dbStatus = ovr[plant][v][dk].status;
-      return { status: dbStatus, comment: ovr[plant][v][dk].comment, ref: ovr[plant][v][dk].ref, locked: dbStatus === "Assigned" };
+      if (dbStatus !== "Assigned") {
+        return { status: dbStatus, comment: ovr[plant][v][dk].comment, ref: ovr[plant][v][dk].ref, locked: false };
+      }
     }
+    
     return{status:"Available",locked:false,ref:null};
   };
   const summary=useMemo(()=>{
