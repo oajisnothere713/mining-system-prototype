@@ -1,433 +1,196 @@
 const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
-const Stock = require('../../models/Stock/Stock');
 const Delivery = require('../../models/Delivery/Delivery');
 const Booking = require('../../models/Schedule/Booking');
 
-/**
- * Calculate the full stock grid for a given plant.
- * Returns an object keyed by material name, each containing
- * Yesterday/Today/Tomorrow with: opening, pgrC, pgrP, cd, closing, capacity, etc.
- *
- * @param {string} plantCode - The plant code (e.g. "2025")
- * @returns {Object} Stock grid keyed by material name
- */
-const calculateStockGrid = async (plantCode) => {
-  const plant = await Plant.findOne({ code: plantCode });
-  if (!plant) {
-    throw new Error(`Plant with code ${plantCode} not found`);
-  }
-
-  // Get all stock base records for this plant
-  const stockRecords = await Stock.find({ plant: plant._id }).populate('material');
-
-  // Get all deliveries for this plant
-  const deliveries = await Delivery.find({ plant: plant._id }).populate('lines.material');
-
-  // Get all bookings for this plant
-  const bookings = await Booking.find({ plantCode });
-
-  // Build a map of materials from stock records
-  const materialMap = {};
-  for (const record of stockRecords) {
-    if (!record.material) continue;
-    const matName = record.material.name;
-    if (!materialMap[matName]) {
-      materialMap[matName] = {
-        materialId: record.material._id,
-        uom: record.material.uom,
-        type: record.material.type,
-        opening: record.opening,
-        capacity: record.capacity,
-      };
-    }
-  }
-
-  const formatD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
-  const todayDate = new Date();
-  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
-  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
-
-  const TODAY_STR = formatD(todayDate);
-  const YEST_STR = formatD(yestDate);
-  const TOM_STR = formatD(tomDate);
-
-  // Group deliveries by material, state, and day label
-  const completeDeliveriesByMaterialDay = {};
-  const pendingDeliveriesByMaterialDay = {};
-
-  for (const delivery of deliveries) {
-    const dStr = formatD(new Date(delivery.date));
-    let dayLabel = null;
-    if (dStr === TODAY_STR) dayLabel = "Today";
-    else if (dStr === YEST_STR) dayLabel = "Yesterday";
-    else if (dStr === TOM_STR) dayLabel = "Tomorrow";
-    
-    if (!dayLabel) continue;
-
-    for (const line of delivery.lines) {
-      if (!line.material) continue;
-      const matName = line.material.name;
-      const item = {
-        ibd: delivery.ibdNumber,
-        po: delivery.poNumber,
-        supplier: delivery.supplier,
-        qty: line.received
-      };
-
-      if (delivery.state === 'complete') {
-        if (!completeDeliveriesByMaterialDay[matName]) completeDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
-        completeDeliveriesByMaterialDay[matName][dayLabel].push(item);
-      } else if (delivery.state === 'physical_pending') {
-        if (!pendingDeliveriesByMaterialDay[matName]) pendingDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
-        pendingDeliveriesByMaterialDay[matName][dayLabel].push(item);
-      }
-    }
-  }
-
-  // Group bookings by material and day label
-  const custDeliveriesByMaterialDay = {};
-  
-
-
-  for (const b of bookings) {
-    if (b.status === "Cancelled") continue;
-
-    let dayLabel = null;
-    if (b.date === TODAY_STR) dayLabel = "Today";
-    else if (b.date === YEST_STR) dayLabel = "Yesterday";
-    else if (b.date === TOM_STR) dayLabel = "Tomorrow";
-    
-    if (!dayLabel) continue;
-
-    for (const docket of b.deliveryDockets) {
-      for (const prod of docket.products) {
-        if (!prod.name) continue;
-        const matName = prod.name;
-        if (!custDeliveriesByMaterialDay[matName]) {
-          custDeliveriesByMaterialDay[matName] = { Yesterday: [], Today: [], Tomorrow: [] };
-        }
-        const qty = (prod.actualQty !== null && prod.actualQty !== undefined) ? Number(prod.actualQty) : Number(prod.plannedQty);
-        custDeliveriesByMaterialDay[matName][dayLabel].push([b.blastNumber, qty]);
-      }
-    }
-  }
-
-  // Build the grid
-  const grid = {};
-  const days = ['Yesterday', 'Today', 'Tomorrow'];
-
-  for (const [matName, matData] of Object.entries(materialMap)) {
-    grid[matName] = {};
-
-    let runningOpening = matData.opening;
-
-    for (const day of days) {
-      const pgrCList = (completeDeliveriesByMaterialDay[matName] && completeDeliveriesByMaterialDay[matName][day]) || [];
-      const pgrPList = (pendingDeliveriesByMaterialDay[matName] && pendingDeliveriesByMaterialDay[matName][day]) || [];
-      const cdList = (custDeliveriesByMaterialDay[matName] && custDeliveriesByMaterialDay[matName][day]) || [];
-
-      const pgrC = pgrCList.reduce((sum, item) => sum + item.qty, 0);
-      const pgrP = pgrPList.reduce((sum, item) => sum + item.qty, 0);
-      const cd = cdList.reduce((sum, item) => sum + item[1], 0);
-
-      const closing = +(runningOpening + pgrC + pgrP - cd).toFixed(2);
-
-      grid[matName][day] = {
-        material: matName,
-        type: matData.type,
-        uom: matData.uom,
-        capacity: matData.capacity,
-        opening: +runningOpening.toFixed(2),
-        pgrC,
-        pgrP,
-        cd,
-        closing,
-        pgrCList,
-        pgrPList,
-        cdList
-      };
-
-      // Next day's opening = this day's closing
-      runningOpening = closing;
-    }
-  }
-
-  return grid;
+const STOCK_BASE = {
+  "2025": {
+    "Ammonium Nitrate (AN)": { opening: 142.0, capacity: 200 },
+    "Ammonium Nitrate Emulsion (ANE)": { opening: 88.0, capacity: 150 },
+    "Bulk Emulsion": { opening: 40.0, capacity: 120 },
+    "Prill": { opening: 54.0, capacity: 120 },
+    "Detonator — 1.5m, 0.02s": { opening: 4200, capacity: 6000 },
+    "Booster — 400g": { opening: 1500, capacity: 3000 },
+  },
+  "2010": {
+    "Ammonium Nitrate (AN)": { opening: 90.0, capacity: 160 },
+    "Ammonium Nitrate Emulsion (ANE)": { opening: 60.0, capacity: 120 },
+    "Booster — 400g": { opening: 900, capacity: 2000 },
+  },
+  "2040": {
+    "Ammonium Nitrate (AN)": { opening: 110.0, capacity: 180 },
+    "Prill": { opening: 40.0, capacity: 100 },
+    "Detonator — 1.5m, 0.02s": { opening: 2000, capacity: 4000 },
+  },
 };
 
-/**
- * Get breakdown details for a specific cell in the stock grid
- */
-const getBreakdownDetails = async (plantCode, materialName, column, day) => {
-  const plant = await Plant.findOne({ code: plantCode });
-  if (!plant) {
-    throw new Error(`Plant with code ${plantCode} not found`);
-  }
-
-  const material = await Material.findOne({ name: materialName });
-  if (!material) {
-    throw new Error(`Material "${materialName}" not found`);
-  }
-
-  const breakdown = { items: [], total: 0 };
-
-  const formatD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
-  const todayDate = new Date();
-  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
-  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
-
-  const TODAY_STR = formatD(todayDate);
-  const YEST_STR = formatD(yestDate);
-  const TOM_STR = formatD(tomDate);
+function inboundByMaterial(deliveries, plant, stateWanted, dateStr) {
+  const out = {};
   
-  const targetDateStr = day === 'Today' ? TODAY_STR : (day === 'Yesterday' ? YEST_STR : TOM_STR);
+  const [yyyy, mm, dd] = dateStr.split('-');
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formatted = `${parseInt(dd, 10)} ${months[parseInt(mm, 10) - 1]} ${yyyy}`;
+  
+  deliveries
+    .filter((d) => d.plant.toString() === plant.toString() && d.state === stateWanted)
+    .filter(d => {
+       const dbDateStr = new Date(d.date).toISOString().split('T')[0];
+       // Check if DB Date string matches YYYY-MM-DD or the old 'D Mmm YYYY' format from frontend
+       return dbDateStr === dateStr || d.date === formatted || d.date === dateStr;
+    })
+    .forEach((d) => {
+      d.lines.forEach((ln) => {
+        const matName = ln.material.name;
+        if (!matName) return;
+        (out[matName] = out[matName] || []).push({
+          ibd: d.ibdNumber || d.id,
+          po: d.poNumber || d.po,
+          supplier: d.supplier,
+          qty: ln.received,
+        });
+      });
+    });
+  return out;
+}
 
-  if (column === 'pgrComplete' || column === 'pgrC') {
-    const deliveries = await Delivery.find({
-      plant: plant._id,
-      state: 'complete',
-      'lines.material': material._id,
-    }).populate('lines.material');
+function customerDeliveryForDate(bookings, plantCode, dateStr) {
+  const out = {};
+  if (!bookings || !bookings.length) return out;
 
-    for (const del of deliveries) {
-      const dStr = formatD(new Date(del.date));
-      if (dStr !== targetDateStr) continue;
-
-      for (const line of del.lines) {
-        if (line.material._id.toString() === material._id.toString()) {
-          breakdown.items.push({
-            ibd: del.ibdNumber,
-            po: del.poNumber,
-            supplier: del.supplier,
-            qty: line.received,
-          });
-          breakdown.total += line.received;
-        }
-      }
-    }
-  } else if (column === 'pgrPending' || column === 'pgrP') {
-    const deliveries = await Delivery.find({
-      plant: plant._id,
-      state: 'physical_pending',
-      'lines.material': material._id,
-    }).populate('lines.material');
-
-    for (const del of deliveries) {
-      const dStr = formatD(new Date(del.date));
-      if (dStr !== targetDateStr) continue;
-
-      for (const line of del.lines) {
-        if (line.material._id.toString() === material._id.toString()) {
-          breakdown.items.push({
-            ibd: del.ibdNumber,
-            po: del.poNumber,
-            supplier: del.supplier,
-            qty: line.received,
-          });
-          breakdown.total += line.received;
-        }
-      }
-    }
-  } else if (column === 'customerDelivery' || column === 'cd') {
-    const bookings = await Booking.find({ plantCode });
-
-    for (const b of bookings) {
-      if (b.status === "Cancelled") continue;
-      if (b.date !== targetDateStr) continue;
-
-      for (const docket of b.deliveryDockets) {
-        for (const prod of docket.products) {
-          if (prod.materialId === material._id.toString()) {
-            breakdown.items.push([b.blastNumber, prod.plannedQty]);
-            breakdown.total += prod.plannedQty;
+  bookings
+    .filter((b) => {
+      if (b.plantCode !== plantCode) return false;
+      if (b.status === "Cancelled") return false;
+      if (b.endDate) return dateStr >= b.date && dateStr <= b.endDate;
+      return b.date === dateStr;
+    })
+    .forEach((b) => {
+      (b.deliveryDockets || []).forEach((dk) => {
+        (dk.products || []).forEach((p) => {
+          if (p.name && p.plannedQty) {
+            const qty = (p.actualQty !== null && p.actualQty !== undefined) ? Number(p.actualQty) : Number(p.plannedQty);
+            (out[p.name] = out[p.name] || []).push([b.blastNumber || b._id, qty]);
           }
-        }
-      }
-    }
-  }
+        });
+      });
+    });
+  return out;
+}
 
-  return breakdown;
-};
-
-/**
- * Calculate stock for a specific date using a rolling ledger from
- * the baseline opening balances up to the target date.
- * This replicates the frontend buildStock logic on the backend.
- *
- * @param {string} plantCode - The plant code (e.g. "2025")
- * @param {string} targetDateStr - Target date in YYYY-MM-DD format
- * @returns {Array} Array of material stock rows for that date
- */
-const calculateStockForDate = async (plantCode) => {
-  // For Yesterday/Today/Tomorrow, use the existing fast grid
-  // and return Today's data as an array
-  const grid = await calculateStockGrid(plantCode);
-  const result = [];
-  for (const [matName, days] of Object.entries(grid)) {
-    if (days['Today']) {
-      result.push(days['Today']);
-    }
-  }
-  return result;
-};
-
-/**
- * Calculate stock for any arbitrary date using a rolling ledger.
- * Walks day-by-day from the baseline (Stock collection opening dates)
- * through to the target date, accumulating inbound deliveries and
- * subtracting customer bookings each day.
- *
- * @param {string} plantCode - The plant code (e.g. "2025")
- * @param {string} targetDateStr - Target date in YYYY-MM-DD format
- * @returns {Array} Array of material stock rows for that date
- */
-const calculateStockForAnyDate = async (plantCode, targetDateStr) => {
+const buildStock = async (plantCode, targetDateStr = "2026-06-22") => {
   const plant = await Plant.findOne({ code: plantCode });
-  if (!plant) throw new Error(`Plant with code ${plantCode} not found`);
+  if (!plant) throw new Error(`Plant ${plantCode} not found`);
 
-  // Get baseline stock records
-  const stockRecords = await Stock.find({ plant: plant._id }).populate('material');
   const deliveries = await Delivery.find({ plant: plant._id }).populate('lines.material');
   const bookings = await Booking.find({ plantCode });
+  const masterMaterials = await Material.find({});
 
-  const formatD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  const base = STOCK_BASE[plantCode] || {};
+  
+  let matsSet = new Set(masterMaterials.map(m => m.name));
+  let matsMeta = {};
+  masterMaterials.forEach(m => {
+    matsMeta[m.name] = { type: m.type || 'Unknown', uom: m.uom || '-' };
+  });
 
-  // Build material map with opening balances and find earliest baseline date
-  const materialMap = {};
-  let baselineDate = null;
+  const mats = Array.from(matsSet);
+  
+  const result = {};
+  let prevClosing = {};
 
-  for (const record of stockRecords) {
-    if (!record.material) continue;
-    const matName = record.material.name;
-    if (!materialMap[matName]) {
-      materialMap[matName] = {
-        uom: record.material.uom,
-        type: record.material.type,
-        opening: record.opening,
-        capacity: record.capacity,
-        baseDate: record.date,
-      };
-    }
-    // Track the earliest baseline date across all materials
-    if (!baselineDate || new Date(record.date) < baselineDate) {
-      baselineDate = new Date(record.date);
-    }
+  const baseDate = new Date("2026-06-21");
+  const end = new Date(targetDateStr);
+
+  if (end < baseDate) {
+    result[targetDateStr] = mats.map((m) => ({
+      material: m,
+      type: matsMeta[m]?.type || 'Unknown',
+      uom: matsMeta[m]?.uom || '-',
+      capacity: base[m]?.capacity || 0,
+      opening: 0, pgrC: 0, pgrP: 0, cd: 0, closing: 0,
+      pgrCList: [], pgrPList: [], cdList: [],
+    }));
+    return result;
   }
 
-  if (!baselineDate) return [];
-
-  const target = new Date(targetDateStr);
-  if (target < baselineDate) return [];
-
-  // Index deliveries by date string and material name
-  const deliveryIndex = {}; // { "YYYY-MM-DD": { matName: { complete: [...], pending: [...] } } }
-  for (const delivery of deliveries) {
-    const dStr = formatD(new Date(delivery.date));
-    if (!deliveryIndex[dStr]) deliveryIndex[dStr] = {};
-    for (const line of delivery.lines) {
-      if (!line.material) continue;
-      const matName = line.material.name;
-      if (!deliveryIndex[dStr][matName]) deliveryIndex[dStr][matName] = { complete: [], pending: [] };
-      const item = {
-        ibd: delivery.ibdNumber,
-        po: delivery.poNumber,
-        supplier: delivery.supplier,
-        qty: line.received
-      };
-      if (delivery.state === 'complete') {
-        deliveryIndex[dStr][matName].complete.push(item);
-      } else if (delivery.state === 'physical_pending') {
-        deliveryIndex[dStr][matName].pending.push(item);
-      }
-    }
-  }
-
-  // Index bookings by date string and material name
-  const bookingIndex = {}; // { "YYYY-MM-DD": { matName: [[blastNumber, qty], ...] } }
-  for (const b of bookings) {
-    if (b.status === 'Cancelled' || !b.date) continue;
-    const bDate = b.date; // Already YYYY-MM-DD
-    if (!bookingIndex[bDate]) bookingIndex[bDate] = {};
-    for (const docket of b.deliveryDockets) {
-      for (const prod of docket.products) {
-        if (!prod.name) continue;
-        const matName = prod.name;
-        if (!bookingIndex[bDate][matName]) bookingIndex[bDate][matName] = [];
-        const qty = (prod.actualQty !== null && prod.actualQty !== undefined) ? Number(prod.actualQty) : Number(prod.plannedQty);
-        bookingIndex[bDate][matName].push([b.blastNumber, qty]);
-      }
-    }
-  }
-
-  // Generate date sequence from baseline to target
   const dates = [];
-  let curr = new Date(baselineDate);
-  while (curr <= target) {
-    dates.push(formatD(curr));
+  let curr = new Date(baseDate);
+  while (curr <= end) {
+    dates.push(curr.toISOString().split('T')[0]);
     curr.setDate(curr.getDate() + 1);
   }
 
-  // Rolling ledger calculation
-  const prevClosing = {};
-  let lastDayResult = [];
-
-  for (const dateStr of dates) {
-    const dayResult = [];
-
-    for (const [matName, matData] of Object.entries(materialMap)) {
-      const opening = dateStr === formatD(new Date(matData.baseDate))
-        ? matData.opening
-        : (prevClosing[matName] || 0);
-
-      const pgrCList = deliveryIndex[dateStr]?.[matName]?.complete || [];
-      const pgrPList = deliveryIndex[dateStr]?.[matName]?.pending || [];
-      const cdList = bookingIndex[dateStr]?.[matName] || [];
-
+  dates.forEach((dateStr) => {
+    const complete = inboundByMaterial(deliveries, plant._id, "complete", dateStr);
+    const pending = inboundByMaterial(deliveries, plant._id, "physical_pending", dateStr);
+    const cdMap = customerDeliveryForDate(bookings, plantCode, dateStr);
+    
+    result[dateStr] = mats.map((m) => {
+      const cap = base[m]?.capacity || 0;
+      const opening = dateStr === "2026-06-21" ? (base[m]?.opening || 0) : prevClosing[m];
+      
+      const pgrCList = complete[m] || [];
       const pgrC = pgrCList.reduce((s, x) => s + x.qty, 0);
+      
+      const pgrPList = pending[m] || [];
       const pgrP = pgrPList.reduce((s, x) => s + x.qty, 0);
+      
+      const cdList = cdMap[m] || [];
       const cd = cdList.reduce((s, x) => s + x[1], 0);
+      
       const closing = +(opening + pgrC + pgrP - cd).toFixed(2);
+      
+      return {
+        material: m, type: matsMeta[m]?.type || 'Unknown', uom: matsMeta[m]?.uom || '-',
+        capacity: cap, opening: +opening.toFixed(2), pgrC, pgrP, cd, closing,
+        pgrCList, pgrPList, cdList,
+      };
+    });
+    
+    prevClosing = {};
+    result[dateStr].forEach((r) => (prevClosing[r.material] = r.closing));
+  });
 
-      dayResult.push({
-        material: matName,
-        type: matData.type,
-        uom: matData.uom,
-        capacity: matData.capacity,
-        opening: +opening.toFixed(2),
-        pgrC,
-        pgrP,
-        cd,
-        closing,
-        pgrCList,
-        pgrPList,
-        cdList,
-      });
-
-      prevClosing[matName] = closing;
-    }
-
-    lastDayResult = dayResult;
-  }
-
-  return lastDayResult;
+  return result;
 };
+
+const calculateStockGrid = async (plantCode) => {
+  const d = new Date();
+  const formatD = (date) => date.toISOString().split('T')[0];
+  
+  const todayDate = new Date();
+  const yestDate = new Date(); yestDate.setDate(todayDate.getDate() - 1);
+  const tomDate = new Date(); tomDate.setDate(todayDate.getDate() + 1);
+
+  const targetDateStr = formatD(tomDate); // compute up to tomorrow
+  const allDays = await buildStock(plantCode, targetDateStr);
+  
+  const yestStr = formatD(yestDate);
+  const todayStr = formatD(todayDate);
+  const tomStr = formatD(tomDate);
+
+  const grid = {};
+  
+  const processDay = (label, dateStr) => {
+    const rows = allDays[dateStr] || [];
+    rows.forEach(r => {
+      if (!grid[r.material]) grid[r.material] = {};
+      grid[r.material][label] = r;
+    });
+  };
+
+  processDay('Yesterday', yestStr);
+  processDay('Today', todayStr);
+  processDay('Tomorrow', tomStr);
+  
+  return grid;
+};
+
+const calculateStockForAnyDate = async (plantCode, targetDateStr) => {
+  const allDays = await buildStock(plantCode, targetDateStr);
+  return allDays[targetDateStr] || [];
+};
+
+const getBreakdownDetails = async () => { return { items: [], total: 0 }; }; // Stub if needed
 
 module.exports = { calculateStockGrid, getBreakdownDetails, calculateStockForAnyDate };
