@@ -64,10 +64,14 @@ export default function CrewPlanner({plant="2025",workingWeek=true,fullWeek,refr
   const cellState=(person,dk)=>{
     const assignedBlast = personAssignments(person, dk)[0];
     if (assignedBlast) return { status: "Assigned", ref: assignedBlast, locked: true };
+    
     if(ovr[plant]?.[person]?.[dk]) {
       const dbStatus = ovr[plant][person][dk].status;
-      return { status: dbStatus, comment: ovr[plant][person][dk].comment, ref: ovr[plant][person][dk].ref, locked: dbStatus === "Assigned" };
+      if (dbStatus !== "Assigned") {
+        return { status: dbStatus, comment: ovr[plant][person][dk].comment, ref: ovr[plant][person][dk].ref, locked: false };
+      }
     }
+    
     if(OFFSHIFT[plant][person]&&OFFSHIFT[plant][person].includes(dk))return{status:"Off-shift",locked:true};
     return{status:"Available",locked:false,ref:null};
   };
