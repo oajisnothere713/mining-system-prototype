@@ -2,10 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
-import { getStock } from '../../services/stockService/stockService';
-import { getDeliveries } from '../../services/deliveryService/deliveryService';
-import { fetchBookings, getBookingsByPlant } from '../Schedule/bookingStore';
-import { buildStock } from '../../utils/stockCalculator/stockCalculator';
 import { DAYS, HIGH_PCT, LOW_PCT } from '../../utils/constants/constants';
 import { fmt, unit } from '../../utils/formatters/formatters';
 import TypeTag from '../../components/ui/TypeTag/TypeTag';
@@ -55,24 +51,18 @@ export default function StockManagementPage() {
     { label: "Tomorrow", date: TOM_STR },
   ];
 
-  // Always compute stock from live delivery data
+  // Fetch stock from the backend API (single source of truth)
   useEffect(() => {
     let cancelled = false;
 
     async function loadStock() {
       setStockData(null);
       try {
-        // Fetch deliveries, bookings, and the master materials list for accurate stock calculation
-        await fetchBookings();
-        const [deliveries, matRes] = await Promise.all([
-          getDeliveries(selectedPlant.code),
-          fetch('/api/materials').then(r => r.json()),
-        ]);
-        const bookings = getBookingsByPlant(selectedPlant.code);
-        const masterMaterials = matRes.success ? matRes.data : null;
+        const res = await fetch(`/api/stock?plant=${selectedPlant.code}&date=${selectedDate}`);
+        const json = await res.json();
+
         if (!cancelled) {
-          const computed = buildStock(deliveries, selectedPlant.code, selectedDate, bookings, masterMaterials);
-          setStockData(computed[selectedDate] || []);
+          setStockData(json.success ? json.data : []);
         }
       } catch (err) {
         if (!cancelled) {

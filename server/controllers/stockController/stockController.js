@@ -1,13 +1,13 @@
 const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
-const { calculateStockGrid, getBreakdownDetails } = require('../../utils/stockEngine/stockEngine');
+const { calculateStockGrid, getBreakdownDetails, calculateStockForAnyDate } = require('../../utils/stockEngine/stockEngine');
 
 // @desc    Get daily stock totals for a plant
-// @route   GET /api/stock?plant=CODE&day=Today
+// @route   GET /api/stock?plant=CODE&day=Today  OR  GET /api/stock?plant=CODE&date=2026-06-28
 // @access  Public
 const getStock = async (req, res, next) => {
   try {
-    const { plant: plantCode, day } = req.query;
+    const { plant: plantCode, day, date } = req.query;
 
     if (!plantCode) {
       res.status(400);
@@ -20,9 +20,18 @@ const getStock = async (req, res, next) => {
       throw new Error(`Plant with code ${plantCode} not found`);
     }
 
+    // If a specific date (YYYY-MM-DD) is provided, use the rolling ledger
+    if (date) {
+      const dayData = await calculateStockForAnyDate(plantCode, date);
+      return res.json({
+        success: true,
+        data: dayData,
+      });
+    }
+
     const stockGrid = await calculateStockGrid(plantCode);
 
-    // If day is specified, filter to just that day
+    // If day label is specified, filter to just that day
     if (day) {
       const validDays = ['Yesterday', 'Today', 'Tomorrow'];
       if (!validDays.includes(day)) {
