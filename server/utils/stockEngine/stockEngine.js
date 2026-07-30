@@ -40,6 +40,7 @@ function inboundByMaterial(deliveries, plant, stateWanted, dateStr) {
     })
     .forEach((d) => {
       d.lines.forEach((ln) => {
+        if (!ln.material) return;
         const matName = ln.material.name;
         if (!matName) return;
         (out[matName] = out[matName] || []).push({
