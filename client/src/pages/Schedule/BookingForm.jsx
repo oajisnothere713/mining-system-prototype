@@ -534,7 +534,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
                       { label: g.type, isHeader: true },
                       ...g.ids.map(id => {
                         const busy = f.date ? vehicleAssignments(id, f.date, isEdit ? f._id : null) : [];
-                        const maint = id === "MH-12-BMD-03"; // Hardcoded maintenance for demo
+                        const maint = false; // Maintenance status is managed on the Fleet Planner board
                         const tag = maint ? " — maintenance" : (busy.length ? " — booked" : " — available");
                         return { value: id, label: `${id}${tag}`, disabled: maint };
                       })
