@@ -9,8 +9,7 @@ export default function WorkbenchTab({
   modalScope, setModalScope,
   forecast 
 }) {
-  const [editingWeek, setEditingWeek] = React.useState(null);
-  const [editValue, setEditValue] = React.useState('');
+
   const ispeCount = ispeRows.length;
   const bulkCount = bulkRows.length;
   const inCat = cat === 'BULK' ? bulkRows : ispeRows;
@@ -97,20 +96,6 @@ export default function WorkbenchTab({
 
   const orderUrgent = sel.level === 'critical';
 
-  const handleEditSubmit = async (weekIndex) => {
-    const val = parseInt(editValue, 10);
-    if (!isNaN(val)) {
-      const newDemand = [...sel.w];
-      newDemand[weekIndex] = val;
-      await forecast.updateDemand(sel._id, newDemand);
-    }
-    setEditingWeek(null);
-  };
-
-  const handleKeyDown = (e, weekIndex) => {
-    if (e.key === 'Enter') handleEditSubmit(weekIndex);
-    if (e.key === 'Escape') setEditingWeek(null);
-  };
 
   return (
     <div className="fc-tab-wrapper">
@@ -226,25 +211,9 @@ export default function WorkbenchTab({
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '18px', height: '150px', paddingTop: '8px', position: 'relative' }}>
             {weekBars.map((b, i) => (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
-                {editingWeek === i ? (
-                  <input
-                    type="number"
-                    autoFocus
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={e => handleKeyDown(e, i)}
-                    onBlur={() => handleEditSubmit(i)}
-                    style={{ width: '60px', textAlign: 'center', padding: '2px', fontSize: '12.5px', fontWeight: 700, borderRadius: '4px', border: '1px solid #DC5B16' }}
-                  />
-                ) : (
-                  <div 
-                    onClick={() => { setEditingWeek(i); setEditValue(sel.w[i].toString()); }}
-                    style={{ fontSize: '12.5px', fontWeight: 700, color: b.lblColor, cursor: 'pointer', padding: '2px 4px', borderRadius: '4px' }}
-                    title="Click to edit demand"
-                  >
-                    {b.valLbl}
-                  </div>
-                )}
+                <div style={{ fontSize: '12.5px', fontWeight: 700, color: b.lblColor, padding: '2px 4px', borderRadius: '4px' }}>
+                  {b.valLbl}
+                </div>
                 <div style={{ width: '100%', maxWidth: '74px', background: b.fill, borderRadius: '7px 7px 0 0', height: `${b.h}%`, minHeight: '3px', transition: 'height .3s' }}></div>
                 <div style={{ fontSize: '11.5px', color: '#5B6470', fontWeight: 600 }}>{b.wk}</div>
                 <div style={{ fontSize: '10.5px', color: '#9098A1' }}>{b.dates}</div>
