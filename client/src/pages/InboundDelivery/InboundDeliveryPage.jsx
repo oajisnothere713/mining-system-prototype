@@ -157,7 +157,7 @@ export default function InboundDeliveryPage() {
             <Select
               value={sf}
               onChange={setSf}
-              options={['All', 'Awaiting PGR', 'Qty Mismatch', 'PGR Pending', 'In Transit', 'PGR Complete']}
+              options={['All', 'PGR Pending', 'In Transit', 'PGR Complete']}
             />
           </Field>
           <Field label="Date">
