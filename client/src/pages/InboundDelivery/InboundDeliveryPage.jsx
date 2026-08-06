@@ -14,7 +14,7 @@ import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
 import useDeliveries from '../../hooks/useDeliveries/useDeliveries';
 import Pill from '../../components/ui/Pill/Pill';
-import Select from '../../components/ui/Select/Select';
+import CustomSelect from '../../components/ui/CustomSelect';
 import Field from '../../components/ui/Field/Field';
 import CustomDatePicker from '../../components/ui/CustomDatePicker';
 import './InboundDeliveryPage.css';
@@ -154,10 +154,11 @@ export default function InboundDeliveryPage() {
       {showF && (
         <div className="ibd-filter-panel">
           <Field label="Status">
-            <Select
+            <CustomSelect
               value={sf}
               onChange={setSf}
               options={['All', 'PGR Pending', 'In Transit', 'PGR Complete']}
+              style={{ minWidth: 150 }}
             />
           </Field>
           <Field label="Date">
