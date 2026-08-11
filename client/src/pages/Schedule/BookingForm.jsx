@@ -63,7 +63,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     return {
       _id: nextNum, blastNumber: nextNum,
       date: todayStr, startTime: "04:30", bookingType: "single", endDate: todayStr,
-      recFreq: "Daily", recEnd: "2026-07-31", recWorkingOnly: true,
+      recFreq: "Daily", recEnd: todayStr, recWorkingOnly: true,
       customerId: "", shipToSite: "", customerPO: "", contract: "",
       dockets: [emptyDocket()],
     };
