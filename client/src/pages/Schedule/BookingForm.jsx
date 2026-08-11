@@ -493,6 +493,7 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           const dkSvcCount = dk.services.length;
           const dkNumber = `${f._id}-${String(di + 1).padStart(2, "0")}`;
           const dkReady = dk.vehicleId && (dkProdCount > 0 || dkSvcCount > 0);
+          const dkReadOnly = ["delivered", "signed", "submitted"].includes((dk.status || "").toLowerCase());
 
           const byCat = { BULK: [], "IS&PE": [] };
           dk.products.forEach((p, pi) => {
@@ -523,10 +524,10 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
                     )}
                   </div>
                 </div>
-                {f.dockets.length > 1 && <button onClick={() => { const nd = [...f.dockets]; nd.splice(di, 1); setF(prev => ({ ...prev, dockets: nd })); }} style={{ border: "1px solid #E4E8ED", background: "#fff", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: "#E03131", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><i className="ti ti-trash"></i> Remove</button>}
+                {!dkReadOnly && f.dockets.length > 1 && <button onClick={() => { const nd = [...f.dockets]; nd.splice(di, 1); setF(prev => ({ ...prev, dockets: nd })); }} style={{ border: "1px solid #E4E8ED", background: "#fff", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: "#E03131", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><i className="ti ti-trash"></i> Remove</button>}
               </div>
 
-              <div style={{ padding: 22 }}>
+              <div style={{ padding: 22, pointerEvents: dkReadOnly ? "none" : "auto", opacity: dkReadOnly ? 0.65 : 1 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1.65fr", gap: 24, marginBottom: 24 }}>
                   {/* Vehicle */}
                   <div><label className="lbl">Vehicle <span style={{ color: "#E8590C" }}>*</span></label>
