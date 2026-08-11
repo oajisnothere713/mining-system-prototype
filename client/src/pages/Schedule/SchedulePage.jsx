@@ -529,7 +529,7 @@ export default function SchedulePage() {
           </div>
           
           <div style={{ padding: '16px 22px', borderTop: `1px solid ${LN}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {["Planned", "In Progress"].includes(b.status) && (
+            {(["Planned", "In Progress"].includes(b.status) && !["Delivered", "Signed", "Submitted"].includes(b.dkStatus)) && (
               <>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, flex: 1, padding: '11px 0' }}><i className="ti ti-pencil"></i> Edit Booking</button>
@@ -538,15 +538,7 @@ export default function SchedulePage() {
                 <button onClick={() => { deleteBooking(b.id); setRefreshKey(k=>k+1); setActivePanel(null); }} style={{ ...gb, width: '100%', color: '#E03131', borderColor: '#E03131' }}><i className="ti ti-trash"></i> Delete Booking</button>
               </>
             )}
-            {b.status === "Delivered" && (
-              <>
-                <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-                  <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{...gb, flex: 1}}><i className="ti ti-file-text"></i> View Docket</button>
-                  <button onClick={() => { updateBooking(b.id, { status: "Submitted" }); setRefreshKey(k=>k+1); setActivePanel({...b, status: "Submitted"}); }} style={{ ...sb, background: GR, flex: 1 }}><i className="ti ti-send"></i> Submit to ERP</button>
-                </div>
-              </>
-            )}
-            {b.status === "Submitted" && (
+            {(["Delivered", "Signed", "Submitted", "Partially Delivered", "Ready to Bill"].includes(b.status) || ["Delivered", "Signed", "Submitted"].includes(b.dkStatus)) && (
               <button onClick={() => { setEditingBookingId(b.id); setShowBookingForm(true); }} style={{ ...gb, width: '100%' }}><i className="ti ti-file-text"></i> View Docket (read-only)</button>
             )}
             {b.status === "Cancelled" && (
