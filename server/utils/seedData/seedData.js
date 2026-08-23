@@ -6,7 +6,6 @@ const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
 const Delivery = require('../../models/Delivery/Delivery');
 const Stock = require('../../models/Stock/Stock');
-const CustomerDelivery = require('../../models/CustomerDelivery/CustomerDelivery');
 
 // ============================================================================
 // SEED DATA
@@ -289,7 +288,6 @@ const seedDatabase = async () => {
       await Material.deleteMany({});
       await Delivery.deleteMany({});
       await Stock.deleteMany({});
-      await CustomerDelivery.deleteMany({});
       console.log('✅ All collections cleared');
     }
 
@@ -419,57 +417,6 @@ const seedDatabase = async () => {
     }
     console.log(`✅ ${stockCount} stock records created`);
 
-    // ── Step 5: Insert Customer Delivery Records ───────────────────────
-    console.log('\n📌 Seeding Customer Deliveries...');
-    let custDelCount = 0;
-
-    for (const [plantCode, days] of Object.entries(CUSTOMER_DELIVERY)) {
-      const plantDoc = plantDocs[plantCode];
-      if (!plantDoc) {
-        console.error(`  ✗ Plant ${plantCode} not found, skipping customer deliveries`);
-        continue;
-      }
-
-      for (const [dayLabel, materials] of Object.entries(days)) {
-        const date = getRelativeDate(dayLabel);
-
-        for (const [matName, bookings] of Object.entries(materials)) {
-          const matDoc = materialDocs[matName];
-          if (!matDoc) {
-            console.error(`  ✗ Material "${matName}" not found, skipping`);
-            continue;
-          }
-
-          for (const [bookingRef, quantity] of bookings) {
-            // Check for existing
-            const existing = await CustomerDelivery.findOne({
-              plant: plantDoc._id,
-              material: matDoc._id,
-              dayLabel,
-              bookingRef,
-            });
-
-            if (existing) {
-              console.log(`  ↳ CustomerDelivery ${bookingRef} already exists`);
-              continue;
-            }
-
-            await CustomerDelivery.create({
-              plant: plantDoc._id,
-              material: matDoc._id,
-              date,
-              dayLabel,
-              bookingRef,
-              quantity,
-            });
-
-            custDelCount++;
-            console.log(`  ↳ Created CustDel: ${plantCode} / ${matName} / ${dayLabel} → ${bookingRef} (${quantity})`);
-          }
-        }
-      }
-    }
-    console.log(`✅ ${custDelCount} customer delivery records created`);
 
     // ── Done ───────────────────────────────────────────────────────────
     console.log('\n════════════════════════════════════════');
