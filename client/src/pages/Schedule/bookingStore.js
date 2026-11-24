@@ -29,6 +29,7 @@ export const CUSTOMERS = [
   { id: "6208", name: "Hindusthan Roadstone Pvt Ltd",     sites: ["Pune Quarry", "Lonavala Pit"] },
   { id: "6209", name: "Eastern Coalfields Contractor — JV", sites: ["Raniganj Block-A", "Asansol Pit"] },
   { id: "6210", name: "Malwa Infra Materials Ltd",        sites: ["Ratlam Quarry", "Dewas Site"] },
+  { id: "6211", name: "Demo Mining Co.",                  sites: ["North Pit · Bench 4", "South Pit · Bench 4"] },
   { id: "9999", name: "Draft Customer",                   sites: ["—"] },
 ];
 
