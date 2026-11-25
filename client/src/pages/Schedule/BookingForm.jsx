@@ -7,7 +7,8 @@ import {
   CUSTOMERS, VEHICLE_GROUPS_BY_PLANT, CREW_GROUPS_BY_PLANT,
   PRODUCT_CATS, PRODUCT_MAP, SERVICES, SERVICE_MAP,
   getBookingById, addBooking, replaceBooking, deleteBooking, nextBlastNumber,
-  vehicleAssignments, personAssignments, rollUpStatus, updateDocketStatus
+  vehicleAssignments, personAssignments, rollUpStatus, updateDocketStatus,
+  fetchFleetStatus, isVehicleInMaintenance
 } from "./bookingStore";
 
 const ON_LEAVE = { "EMP-2025-04": ["2026-06-05"] }; // CREW B
@@ -71,6 +72,15 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
 
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [accOpen, setAccOpen] = useState({ BULK: true, "IS&PE": true });
+  const [, setFleetVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    fetchFleetStatus(plantCode).then(() => {
+      if (active) setFleetVersion(v => v + 1);
+    });
+    return () => { active = false; };
+  }, [plantCode]);
 
   const VEHICLE_GROUPS = VEHICLE_GROUPS_BY_PLANT[plantCode] || [];
   const CREW_GROUPS = CREW_GROUPS_BY_PLANT[plantCode] || [];
@@ -103,6 +113,33 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
   }, [f.bookingType, f.date, f.recEnd, f.recFreq, f.recWorkingOnly]);
 
   const isReadOnly = ["delivered", "signed", "submitted"].includes((f.status || "").toLowerCase());
+
+  const recurringDates = useMemo(() => {
+    if (f.bookingType !== "recurring" || !f.date || !f.recEnd) return [];
+    const s = new Date(f.date + "T00:00:00");
+    const e = new Date(f.recEnd + "T00:00:00");
+    if (e < s) return [];
+    const dates = [];
+    for (let d = new Date(s), steps = 0; d <= e && steps < 366; steps++) {
+      const w = d.getDay();
+      if (!(f.recFreq === "Daily" && f.recWorkingOnly && (w === 0 || w === 6))) {
+        dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      }
+      d.setDate(d.getDate() + (f.recFreq === "Daily" ? 1 : 7));
+    }
+    return dates;
+  }, [f.bookingType, f.date, f.recEnd, f.recFreq, f.recWorkingOnly]);
+
+  const isMaintenanceForBooking = (vehicleId) => {
+    if (!vehicleId || !f.date) return false;
+    if (f.bookingType === "multi") {
+      return isVehicleInMaintenance(vehicleId, f.date, plantCode, f.endDate || null);
+    }
+    if (f.bookingType === "recurring" && recurringDates.length > 0) {
+      return recurringDates.some(d => isVehicleInMaintenance(vehicleId, d, plantCode));
+    }
+    return isVehicleInMaintenance(vehicleId, f.date, plantCode);
+  };
 
   const recSummary = () => {
     if (!f.date || !f.recEnd) return "Set a start and end date to preview the schedule.";
@@ -146,12 +183,16 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     return `Repeats weekly on ${dow(f.date)} at ${f.startTime}, from ${fmtDate(f.date)} until ${fmtDate(f.recEnd)} — creates ${occ} separate booking${occ !== 1 ? "s" : ""}`;
   };
 
+  const isDocketLocked = (dk) => ["delivered", "signed", "submitted"].includes((dk.status || "").toLowerCase());
+
   const validationOk = () => {
     if (!(f.date && f.customerId && f.shipToSite)) return false;
     if (f.bookingType === "multi" && !f.endDate) return false;
     if (f.bookingType === "recurring" && (!f.recEnd || occ < 1)) return false;
     return f.dockets.length > 0 && f.dockets.every(dk =>
-      dk.vehicleId && (dk.products.some(p => p.materialId && p.plannedQty) || dk.services.length > 0)
+      dk.vehicleId &&
+      (isDocketLocked(dk) || !isMaintenanceForBooking(dk.vehicleId)) &&
+      (dk.products.some(p => p.materialId && p.plannedQty) || dk.services.length > 0)
     );
   };
 
@@ -164,6 +205,8 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
     if (f.bookingType === "recurring" && (!f.recEnd || occ < 1)) items.push("Recurrence end date");
     f.dockets.forEach((dk, i) => {
       if (!dk.vehicleId) items.push(`Docket ${i + 1}: Vehicle`);
+      else if (!isDocketLocked(dk) && isMaintenanceForBooking(dk.vehicleId))
+        items.push(`Docket ${i + 1}: Vehicle (${dk.vehicleId}) is in maintenance`);
       if (!dk.products.some(p => p.materialId && p.plannedQty) && !dk.services.length)
         items.push(`Docket ${i + 1}: Products or services`);
     });
@@ -492,8 +535,9 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
           const dkProdCount = dk.products.filter(p => p.materialId && p.plannedQty).length;
           const dkSvcCount = dk.services.length;
           const dkNumber = `${f._id}-${String(di + 1).padStart(2, "0")}`;
-          const dkReady = dk.vehicleId && (dkProdCount > 0 || dkSvcCount > 0);
-          const dkReadOnly = ["delivered", "signed", "submitted"].includes((dk.status || "").toLowerCase());
+          const dkReadOnly = isDocketLocked(dk);
+          const dkMaint = !dkReadOnly && dk.vehicleId && f.date ? isMaintenanceForBooking(dk.vehicleId) : false;
+          const dkReady = dk.vehicleId && !dkMaint && (dkProdCount > 0 || dkSvcCount > 0);
 
           const byCat = { BULK: [], "IS&PE": [] };
           dk.products.forEach((p, pi) => {
@@ -531,16 +575,17 @@ export default function BookingForm({ plant, editBlastId = null, expandDocket = 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1.65fr", gap: 24, marginBottom: 24 }}>
                   {/* Vehicle */}
                   <div><label className="lbl">Vehicle <span style={{ color: "#E8590C" }}>*</span></label>
-                    <CustomSelect className={`fld ${saveAttempted && !dk.vehicleId ? "err" : ""}`} value={dk.vehicleId} onChange={val => setDocket(di, { vehicleId: val })} placeholder="Select vehicle…" options={VEHICLE_GROUPS.flatMap(g => [
+                    <CustomSelect className={`fld ${((saveAttempted && !dk.vehicleId) || dkMaint) ? "err" : ""}`} value={dk.vehicleId} onChange={val => setDocket(di, { vehicleId: val })} placeholder="Select vehicle…" options={VEHICLE_GROUPS.flatMap(g => [
                       { label: g.type, isHeader: true },
                       ...g.ids.map(id => {
                         const busy = f.date ? vehicleAssignments(id, f.date, isEdit ? f._id : null) : [];
-                        const maint = false; // Maintenance status is managed on the Fleet Planner board
+                        const maint = f.date ? isMaintenanceForBooking(id) : false;
                         const tag = maint ? " — maintenance" : (busy.length ? " — booked" : " — available");
                         return { value: id, label: `${id}${tag}`, disabled: maint };
                       })
                     ])} />
                     {saveAttempted && !dk.vehicleId && <div style={{ marginTop: 4, fontSize: 12, color: "#E03131", display: "flex", alignItems: "center", gap: 4 }}><i className="ti ti-alert-circle" style={{ fontSize: 12 }}></i> Required</div>}
+                    {dkMaint && <div style={{ fontSize: 12, color: "#C92A2A", background: "#FFF5F5", border: "1px solid #FFA8A8", borderRadius: 8, padding: "9px 11px", marginTop: 10, display: "flex", gap: 7, alignItems: "flex-start" }}><i className="ti ti-tool" style={{ color: "#E03131", flexShrink: 0, marginTop: 1 }}></i><span><b>{dk.vehicleId}</b> is scheduled for Maintenance on this date. Select an available vehicle.</span></div>}
                     {conf.length > 0 && <div style={{ fontSize: 12, color: "#7A4F00", background: "#FFF9DB", border: "1px solid #F4D78A", borderRadius: 8, padding: "9px 11px", marginTop: 10, display: "flex", gap: 7, alignItems: "flex-start" }}><i className="ti ti-alert-triangle" style={{ color: "#F08C00", flexShrink: 0, marginTop: 1 }}></i><span>Double-booked with <b>{conf.join(", ")}</b> on this date. Allowed — flagged on board.</span></div>}
                   </div>
 

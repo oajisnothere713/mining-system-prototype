@@ -148,6 +148,48 @@ export const SERVICES = [
 export const SERVICE_MAP = {};
 SERVICES.forEach(s => { SERVICE_MAP[s.id] = s; });
 
+/* ---------- FLEET STATUS (maintenance awareness) ---------- */
+const fleetStatusByPlant = {};
+let activeFleetPlant = "2025";
+
+function normalizePlantStatus(raw, plantCode) {
+  let loaded = raw || {};
+  if (loaded[plantCode] && typeof loaded[plantCode] === "object") {
+    loaded = loaded[plantCode];
+  }
+  return loaded;
+}
+
+export function setFleetStatusCache(plantCode, statusObj) {
+  if (!plantCode) return;
+  activeFleetPlant = plantCode;
+  fleetStatusByPlant[plantCode] = normalizePlantStatus(statusObj, plantCode);
+}
+
+export async function fetchFleetStatus(plantCode) {
+  activeFleetPlant = plantCode;
+  try {
+    const res = await fetch(`/api/schedule/fleet/${plantCode}`);
+    const json = await res.json();
+    fleetStatusByPlant[plantCode] = normalizePlantStatus(json?.status, plantCode);
+  } catch (err) {
+    console.error("Error fetching fleet status:", err);
+    fleetStatusByPlant[plantCode] = fleetStatusByPlant[plantCode] || {};
+  }
+}
+
+export function isVehicleInMaintenance(vehicleId, dateKey, plantCode = activeFleetPlant, endDate = null) {
+  if (!vehicleId || !dateKey) return false;
+  const vMap = fleetStatusByPlant[plantCode]?.[vehicleId];
+  if (!vMap) return false;
+  if (!endDate || endDate <= dateKey) {
+    return vMap[dateKey]?.status === "Maintenance";
+  }
+  return Object.entries(vMap).some(
+    ([d, val]) => d >= dateKey && d <= endDate && val?.status === "Maintenance"
+  );
+}
+
 /* ---------- STATUS MODEL ---------- */
 // Delivery-docket lifecycle
 export const DOCKET_STATUS_ORDER = ["Planned", "In Progress", "Delivered", "Signed", "Submitted"];

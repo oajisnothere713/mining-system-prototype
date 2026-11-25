@@ -5,7 +5,7 @@ import FleetPlanner from './FleetPlanner';
 import BookingForm from './BookingForm';
 import { usePlant } from '../../context/PlantContext/PlantContext';
 import { useToast } from '../../context/ToastContext/ToastContext';
-import { fetchBookings, fetchMaterials, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, updateDocketStatus, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
+import { fetchBookings, fetchMaterials, fetchFleetStatus, isVehicleInMaintenance, getBookings, PRODUCT_MAP, SERVICE_MAP, deleteBooking, updateBooking, updateDocketStatus, isVehicleConflicted, isPersonConflicted, CREW_GROUPS_BY_PLANT, CREW_MAP, VEHICLE_GROUPS_BY_PLANT } from './bookingStore';
 
 const O="#E8590C", OS="#FFF1E8", INK="#1A1D21", SL="#5B6470", LN="#E6E9ED", BG="#F7F8FA", WT="#fff", COLHEAD="#EEF1F5", FLEETCOL="#F4F6F9";
 const GR="#2F9E44", GRS="#EBFBEE", AM="#F08C00", AMS="#FFF9DB", BL="#1971C2", BLS="#E7F5FF", RD="#E03131", RDS="#FFF0F0", SLS="#EEF0F2";
@@ -158,8 +158,10 @@ export default function SchedulePage() {
     }));
   }, [plantCode]);
 
+  const [, setFleetVersion] = useState(0);
+
   React.useEffect(() => {
-    Promise.all([fetchBookings(), fetchMaterials()]).then(() => {
+    Promise.all([fetchBookings(), fetchMaterials(), fetchFleetStatus(plantCode)]).then(() => {
       setRefreshKey(k=>k+1);
       setLoading(false);
     });
@@ -172,6 +174,14 @@ export default function SchedulePage() {
     window.addEventListener('booking-rollback', handleRollback);
     return () => window.removeEventListener('booking-rollback', handleRollback);
   }, []);
+
+  React.useEffect(() => {
+    let active = true;
+    fetchFleetStatus(plantCode).then(() => {
+      if (active) setFleetVersion(v => v + 1);
+    });
+    return () => { active = false; };
+  }, [plantCode, tab, refreshKey]);
 
 
 
@@ -704,20 +714,23 @@ export default function SchedulePage() {
                     {!ic && g.lanes.map(lane => {
                       const lb = getLaneBookings(lane.id);
                       const icon = mode === "fleet" ? g.icon : "ti-user";
+                      const today = new Date();
+                      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                      const isMaintToday = mode === "fleet" && isVehicleInMaintenance(lane.id, todayKey, plantCode);
                       return (
                         <div key={lane.id} style={{ display: 'grid', gridTemplateColumns: `200px ${cols}`, borderBottom: `1px solid ${LN}`, minHeight: 78 }}>
                           <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 11, borderRight: `3px solid ${LN}`, background: FLEETCOL }}>
-                            <div style={{ width: 36, height: 36, borderRadius: 9, background: lane.s === "maintenance" ? RDS : OS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: `1px solid ${lane.s === "maintenance" ? RD : O}44` }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 9, background: isMaintToday ? RDS : OS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: `1px solid ${isMaintToday ? RD : O}44` }}>
                               {mode === "fleet" && g.img ? (
-                                <img src={g.img} style={{ width: "90%", height: "90%", objectFit: "contain", opacity: lane.s === "maintenance" ? 0.6 : 1 }} alt={g.type} />
+                                <img src={g.img} style={{ width: "90%", height: "90%", objectFit: "contain", opacity: isMaintToday ? 0.6 : 1 }} alt={g.type} />
                               ) : (
-                                <i className={`ti ${icon}`} style={{ fontSize: 19, color: lane.s === "maintenance" ? RD : O }}></i>
+                                <i className={`ti ${icon}`} style={{ fontSize: 19, color: isMaintToday ? RD : O }}></i>
                               )}
                             </div>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: 13.5, fontWeight: 700, color: INK, whiteSpace: 'nowrap' }}>{lane.name || lane.id}</div>
                               {mode === "fleet" ? (
-                                lane.s === "maintenance" ? (
+                                isMaintToday ? (
                                   <span style={{ fontSize: 10.5, color: RD, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><i className="ti ti-tool" style={{ fontSize: 11 }}></i>Maintenance</span>
                                 ) : (
                                   <span style={{ fontSize: 10.5, color: GR, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><i className="ti ti-circle-dot" style={{ fontSize: 10 }}></i>Available</span>
@@ -732,7 +745,7 @@ export default function SchedulePage() {
                             {/* Background Grid for vertical lines and lane status */}
                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: cols, pointerEvents: 'none' }}>
                               {activeWeek.map(d => {
-                                const maint = lane.s === "maintenance" && ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].includes(d.k);
+                                const maint = mode === "fleet" && isVehicleInMaintenance(lane.id, d.k, plantCode);
                                 return (
                                   <div key={d.k} style={{ borderLeft: `1px solid ${LN}`, background: maint ? "repeating-linear-gradient(45deg,#FFF5F5,#FFF5F5 6px,#fff 6px,#fff 12px)" : (d.today ? "#FFFBF7" : "transparent") }} />
                                 );
@@ -759,16 +772,15 @@ export default function SchedulePage() {
                               <div style={{ display: 'grid', gridTemplateColumns: cols, flexGrow: 1 }}>
                                 {activeWeek.map(d => {
                                   const cell = lb.single[d.k] || [];
-                                  const maint = lane.s === "maintenance" && ["2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].includes(d.k);
+                                  const maint = mode === "fleet" && isVehicleInMaintenance(lane.id, d.k, plantCode);
                                   return (
                                     <div key={d.k} style={{ padding: (cell.length > 0 || maint) ? 7 : '0 7px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                      {maint ? (
-                                        <div style={{ fontSize: 10, color: RD, fontWeight: 600, textAlign: 'center', paddingTop: lb.multis.length > 0 ? 0 : 24 }}>
+                                      {maint && (
+                                        <div style={{ fontSize: 10, color: RD, fontWeight: 600, textAlign: 'center', paddingTop: (lb.multis.length > 0 || cell.length > 0) ? 0 : 24 }}>
                                           {lb.multis.length > 0 ? "" : "Out of service"}
                                         </div>
-                                      ) : (
-                                        cell.map(b => <Card key={b.id} b={b} spanning={false} />)
                                       )}
+                                      {cell.map(b => <Card key={b.id} b={b} spanning={false} />)}
                                     </div>
                                   );
                                 })}
