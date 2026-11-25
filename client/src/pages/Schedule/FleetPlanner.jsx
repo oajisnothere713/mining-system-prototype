@@ -22,7 +22,7 @@ const PLANTS=[{code:"2010",name:"Nimbahera"},{code:"2025",name:"Panna"},{code:"2
 
 const GROUPS_BY_PLANT={
   "2025":[
-    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",img:"/images/bmd_truck.png",members:["MH-12-BMD-01","MH-12-BMD-02","MH-12-BMD-03"]},
+    {type:"BMD Trucks",hint:"Bulk Mixing & Delivery",img:"/images/bmd_truck.png",members:["MH-12-BMD-01","MMU-02","MH-12-BMD-03"]},
     {type:"Blast Crew Vehicles",hint:"Carries blaster / shotfirer crew",img:"/images/crew_vehicle.png",members:["MH-12-BCV-01","MH-12-BCV-02"]},
     {type:"Support Trucks",hint:"Survey, mark-out & ancillary support",img:"/images/support_truck.png",members:["MH-12-SVY-01","MH-12-SPT-01"]},
   ],
