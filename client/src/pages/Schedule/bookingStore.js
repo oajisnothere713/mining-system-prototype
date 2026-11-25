@@ -36,7 +36,7 @@ export const CUSTOMERS = [
 /* Vehicles grouped by type, per plant */
 export const VEHICLE_GROUPS_BY_PLANT = {
   "2025": [
-    { type: "BMD Trucks",          hint: "Bulk Mixing & Delivery",              ids: ["MH-12-BMD-01", "MH-12-BMD-02", "MH-12-BMD-03"] },
+    { type: "BMD Trucks",          hint: "Bulk Mixing & Delivery",              ids: ["MH-12-BMD-01", "MMU-02", "MH-12-BMD-03"] },
     { type: "Blast Crew Vehicles", hint: "Carries blaster / shotfirer crew",    ids: ["MH-12-BCV-01", "MH-12-BCV-02"] },
     { type: "Support Trucks",      hint: "Survey, mark-out & ancillary support", ids: ["MH-12-SVY-01", "MH-12-SPT-01"] },
   ],
@@ -57,7 +57,7 @@ export const CREW_GROUPS_BY_PLANT = {
       { id: "EMP-2025-01", name: "Ramesh Patil" },
       { id: "EMP-2025-02", name: "Suresh Yadav" },
       { id: "EMP-2025-03", name: "Blair Huntingdon" },
-      { id: "EMP-2025-04", name: "Cas Davide" }
+      { id: "EMP-2025-04", name: "CREW B" }
     ]},
     { role: "Blasters / Shotfirers", hint: "Statutory blasting crew", members: [
       { id: "EMP-2025-05", name: "Mike Sullivan" },

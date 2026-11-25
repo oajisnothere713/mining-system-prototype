@@ -10,7 +10,7 @@ import {
   vehicleAssignments, personAssignments, rollUpStatus, updateDocketStatus
 } from "./bookingStore";
 
-const ON_LEAVE = { "EMP-2025-04": ["2026-06-05"] }; // Cas Davide
+const ON_LEAVE = { "EMP-2025-04": ["2026-06-05"] }; // CREW B
 const onLeave = (id, d) => (ON_LEAVE[id] || []).includes(d);
 
 function initials(name) { return name.split(" ").slice(0, 2).map(w => w[0].toUpperCase()).join(""); }
