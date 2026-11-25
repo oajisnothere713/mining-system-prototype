@@ -143,6 +143,7 @@ export const SERVICES = [
   { id: "SVC-STEM",   name: "Stemming Service",            uom: "hr"  },
   { id: "SVC-DESIGN", name: "Blast Design & Consultancy",  uom: "ea"  },
   { id: "SVC-FUME",   name: "Post-Blast Fume Clearance",   uom: "hr"  },
+  { id: "SVC-MMU",    name: "MMU Operation",               uom: "hr"  },
 ];
 export const SERVICE_MAP = {};
 SERVICES.forEach(s => { SERVICE_MAP[s.id] = s; });
