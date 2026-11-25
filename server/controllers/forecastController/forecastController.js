@@ -8,6 +8,55 @@ const Plant = require('../../models/Plant/Plant');
 const Material = require('../../models/Material/Material');
 const { calculateStockGrid } = require('../../utils/stockEngine/stockEngine');
 
+const syncInFlightByPlant = new Map();
+
+/**
+ * Ensures every Material in the catalog has a ForecastMaterial entry for the given plant
+ * so newly added products automatically appear on the Forecast Board.
+ */
+async function ensurePlantForecastMaterials(plant) {
+  const key = String(plant);
+  if (syncInFlightByPlant.has(key)) {
+    return syncInFlightByPlant.get(key);
+  }
+
+  const run = (async () => {
+    const [allMaterials, existing] = await Promise.all([
+      Material.find({}, '_id').lean(),
+      ForecastMaterial.find({ plant }, 'material').lean(),
+    ]);
+
+    const existingIds = new Set(
+      existing.map((fm) => fm.material?.toString()).filter(Boolean)
+    );
+    const missing = allMaterials.filter((m) => !existingIds.has(m._id.toString()));
+
+    if (missing.length > 0) {
+      await ForecastMaterial.bulkWrite(
+        missing.map((m) => ({
+          updateOne: {
+            filter: { plant, material: m._id },
+            update: {
+              $setOnInsert: {
+                plant,
+                material: m._id,
+                weeklyDemand: [0, 0, 0, 0],
+                leadTime: 7,
+              },
+            },
+            upsert: true,
+          },
+        }))
+      );
+    }
+  })().finally(() => {
+    syncInFlightByPlant.delete(key);
+  });
+
+  syncInFlightByPlant.set(key, run);
+  return run;
+}
+
 // GET /api/forecast/materials
 exports.getMaterials = async (req, res, next) => {
   try {
@@ -15,10 +64,22 @@ exports.getMaterials = async (req, res, next) => {
     if (!plant) {
       return res.status(400).json({ success: false, message: 'Plant ID is required' });
     }
-    const forecastMaterials = await ForecastMaterial.find({ plant }).populate('material');
+
+    const plantDoc = await Plant.findById(plant);
+    if (plantDoc) {
+      await ensurePlantForecastMaterials(plant);
+    }
+
+    const rawForecastMaterials = await ForecastMaterial.find({ plant }).populate('material');
+    const seenMatIds = new Set();
+    const forecastMaterials = rawForecastMaterials.filter((fm) => {
+      const matId = fm.material?._id?.toString();
+      if (!matId || seenMatIds.has(matId)) return false;
+      seenMatIds.add(matId);
+      return true;
+    });
     
     // Fetch plant code to query bookings
-    const plantDoc = await Plant.findById(plant);
     const plantCode = plantDoc ? plantDoc.code : null;
     const bookings = plantCode ? await Booking.find({ plantCode }) : [];
     
