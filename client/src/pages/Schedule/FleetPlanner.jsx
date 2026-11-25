@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Truck, Lock, MessageSquare, AlertTriangle } from "lucide-react";
-import { vehicleAssignments } from './bookingStore';
+import { vehicleAssignments, setFleetStatusCache } from './bookingStore';
 
 /* ============================================================
    FLEET PLANNER — set vehicle status & maintenance across week
@@ -54,6 +54,9 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek,ref
           let loadedStatus = data.status;
           if (loadedStatus[plant]) loadedStatus = loadedStatus[plant];
           setOvr(prev => ({ ...prev, [plant]: loadedStatus }));
+          setFleetStatusCache(plant, loadedStatus);
+        } else if (data && data.status) {
+          setFleetStatusCache(plant, {});
         }
       })
       .catch(err => console.error("Error fetching fleet status:", err));
@@ -86,6 +89,8 @@ export default function FleetPlanner({plant="2025",workingWeek=true,fullWeek,ref
       const next={...prev,[plant]:{...prev[plant],[v]:{...(prev[plant]?.[v]||{})}}};
       for(let i=fi;i<=ti;i++){const dk=WEEK[i].k;const cs=cellState(v,dk);if(cs.locked)continue;if(status==="Available")delete next[plant][v][dk];else next[plant][v][dk]={status,comment:comment||""};}
       
+      setFleetStatusCache(plant, next[plant]);
+
       fetch(`/api/schedule/fleet/${plant}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
