@@ -36,7 +36,7 @@ export const CUSTOMERS = [
 /* Vehicles grouped by type, per plant */
 export const VEHICLE_GROUPS_BY_PLANT = {
   "2025": [
-    { type: "BMD Trucks",          hint: "Bulk Mixing & Delivery",              ids: ["MH-12-BMD-01", "MMU-02", "MH-12-BMD-03"] },
+    { type: "BMD Trucks",          hint: "Bulk Mixing & Delivery",              ids: ["MMU-01", "MMU-02", "MH-12-BMD-03"] },
     { type: "Blast Crew Vehicles", hint: "Carries blaster / shotfirer crew",    ids: ["MH-12-BCV-01", "MH-12-BCV-02"] },
     { type: "Support Trucks",      hint: "Survey, mark-out & ancillary support", ids: ["MH-12-SVY-01", "MH-12-SPT-01"] },
   ],
